@@ -1,11 +1,16 @@
 # Hidden Networks Scanner Requirements
-# This tool uses only Python standard library modules
-# No additional pip packages are required
+# Enhanced with Scapy for advanced 802.11 frame analysis
+
+# Python packages
+scapy>=2.4.5
+netifaces>=0.11.0
 
 # System dependencies (install via package manager):
 # - wireless-tools
 # - iw  
 # - network-manager
+# - tcpdump
+# - aircrack-ng (optional, for advanced features)
 
 # Python version requirement:
 # python>=3.6
