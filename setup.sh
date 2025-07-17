@@ -33,19 +33,38 @@ echo "Installing system dependencies..."
 case $OS in
     debian)
         sudo apt-get update
-        sudo apt-get install -y wireless-tools iw network-manager python3
+        sudo apt-get install -y wireless-tools iw network-manager python3 python3-pip python3-venv tcpdump
+        # Optional: Install aircrack-ng for advanced features
+        sudo apt-get install -y aircrack-ng
         ;;
     redhat)
         if command -v dnf &> /dev/null; then
-            sudo dnf install -y wireless-tools iw NetworkManager python3
+            sudo dnf install -y wireless-tools iw NetworkManager python3 python3-pip tcpdump
+            sudo dnf install -y aircrack-ng
         else
-            sudo yum install -y wireless-tools iw NetworkManager python3
+            sudo yum install -y wireless-tools iw NetworkManager python3 python3-pip tcpdump
+            sudo yum install -y aircrack-ng
         fi
         ;;
     arch)
-        sudo pacman -S --needed wireless_tools iw networkmanager python
+        sudo pacman -S --needed wireless_tools iw networkmanager python python-pip tcpdump
+        sudo pacman -S --needed aircrack-ng
         ;;
 esac
+
+# Create virtual environment if it doesn't exist
+if [ ! -d ".venv" ]; then
+    echo "Creating Python virtual environment..."
+    python3 -m venv .venv
+fi
+
+# Activate virtual environment
+source .venv/bin/activate
+
+# Install Python dependencies
+echo "Installing Python dependencies..."
+pip install --upgrade pip
+pip install scapy>=2.4.5 netifaces>=0.11.0
 
 
 echo "Making scan.py executable..."
@@ -57,7 +76,7 @@ python3 --version
 
 
 echo "Verifying tool installation..."
-tools=("iwlist" "iw" "nmcli")
+tools=("iwlist" "iw" "nmcli" "tcpdump")
 for tool in "${tools[@]}"; do
     if command -v "$tool" &> /dev/null; then
         echo "✓ $tool is installed"
@@ -67,13 +86,32 @@ for tool in "${tools[@]}"; do
     fi
 done
 
+# Check optional tools
+echo "Checking optional tools..."
+optional_tools=("aircrack-ng" "airodump-ng")
+for tool in "${optional_tools[@]}"; do
+    if command -v "$tool" &> /dev/null; then
+        echo "✓ $tool is installed (optional)"
+    else
+        echo "○ $tool is not installed (optional)"
+    fi
+done
+
 echo ""
-echo "[+] Setup completed successfully!"
+echo "[+] Enhanced setup completed successfully!"
 echo ""
-echo "Usage:"
-echo "  sudo ./scan.py                    # Basic scan"
-echo "  sudo ./scan.py -i wlan0           # Scan specific interface"
-echo "  sudo ./scan.py -p                 # Enable passive monitoring"
-echo "  sudo ./scan.py -o results.json    # Export results"
+echo "Enhanced Features:"
+echo "  ✓ Scapy-based 802.11 frame analysis"
+echo "  ✓ Probe request monitoring"
+echo "  ✓ Advanced hidden SSID detection"
+echo "  ✓ Vendor identification"
+echo "  ✓ Security analysis"
 echo ""
-echo "Note: Root privileges are required for wireless scanning"
+echo "Usage Examples:"
+echo "  sudo ./scan.py                           # Basic enhanced scan"
+echo "  sudo ./scan.py -i wlan0 -p               # Passive scan with probe requests"
+echo "  sudo ./scan.py --probe-ssids home office # Probe specific SSIDs"
+echo "  sudo ./scan.py -v -o results.json        # Verbose with JSON export"
+echo ""
+echo "IMPORTANT: Root privileges are required for wireless scanning"
+echo "WARNING: Use deauth features responsibly and only on authorized networks"

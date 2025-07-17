@@ -1,16 +1,24 @@
-# Hidden Networks Scanner
+# Enhanced Hidden Networks Scanner
 
-A powerful Python tool for discovering and displaying hidden wireless networks along with their SSID and BSSID information.
+A powerful Python tool for discovering and displaying hidden wireless networks using advanced techniques including Scapy-based 802.11 frame analysis, probe request monitoring, and active network enumeration.
 
 ## Features
 
-- **Multi-method scanning**: Uses iwlist, nmcli, and optional passive monitoring
+### Core Capabilities
+- **Multi-method scanning**: Uses iwlist, nmcli, and Scapy-based packet analysis
 - **Hidden network detection**: Automatically identifies networks with hidden SSIDs
-- **Comprehensive information**: Displays BSSID, SSID, channel, signal strength, and security
-- **Passive monitoring**: Optional monitor mode for advanced detection
-- **Export functionality**: Save results to JSON format
-- **Interface selection**: Automatic detection or manual interface specification
-- **Root privilege detection**: Ensures proper permissions for wireless scanning
+- **Comprehensive information**: Displays BSSID, SSID, channel, signal strength, security, and vendor
+- **Advanced 802.11 analysis**: Deep packet inspection using Scapy
+- **Probe request monitoring**: Captures and analyzes client probe requests
+- **Active probing**: Sends targeted probe requests to discover hidden networks
+
+### Advanced Features
+- **Vendor identification**: MAC address to vendor mapping
+- **Security analysis**: Detailed WPA/WPA2/WEP detection
+- **Client tracking**: Monitor devices connecting to networks
+- **SSID correlation**: Match probe requests with hidden networks
+- **Passive monitoring**: Enhanced monitor mode scanning
+- **Deauthentication attacks**: For educational/testing purposes (with safeguards)
 
 ## Requirements
 
@@ -19,21 +27,23 @@ A powerful Python tool for discovering and displaying hidden wireless networks a
 ```bash
 # Ubuntu/Debian
 sudo apt-get update
-sudo apt-get install wireless-tools iw network-manager
+sudo apt-get install wireless-tools iw network-manager python3 python3-pip python3-venv tcpdump
+sudo apt-get install aircrack-ng  # Optional for advanced features
 
 # CentOS/RHEL/Fedora
-sudo yum install wireless-tools iw NetworkManager
+sudo yum install wireless-tools iw NetworkManager python3 python3-pip tcpdump aircrack-ng
 # or
-sudo dnf install wireless-tools iw NetworkManager
+sudo dnf install wireless-tools iw NetworkManager python3 python3-pip tcpdump aircrack-ng
 
 # Arch Linux
-sudo pacman -S wireless_tools iw networkmanager
+sudo pacman -S wireless_tools iw networkmanager python python-pip tcpdump aircrack-ng
 ```
 
 ### Python Requirements
 
 - Python 3.6+
-- Standard library modules (no additional pip packages required)
+- scapy>=2.4.5
+- netifaces>=0.11.0
 
 ## Installation
 
@@ -88,26 +98,59 @@ sudo python3 scan.py -i wlan0 -t 45 -p -o results.json -v
 
 ## Output Format
 
-The tool provides detailed information about discovered networks:
+The enhanced tool provides detailed information about discovered networks:
 
 ### Hidden Networks Section
 ```
 HIDDEN NETWORKS DETECTED:
-================================================================================
-BSSID              SSID                 Channel  Signal   Security  
---------------------------------------------------------------------------------
-aa:bb:cc:dd:ee:ff  <hidden>            6        -45      WPA2      
-11:22:33:44:55:66  <hidden>            11       -67      WPA       
+==========================================================================================
+BSSID              SSID                 Probable SSID   Channel  Signal   Security   Vendor         
+------------------------------------------------------------------------------------------
+aa:bb:cc:dd:ee:ff  <hidden>            MyHome_WiFi     6        -45      WPA2       Netgear        
+11:22:33:44:55:66  <hidden>            -               11       -67      WPA        Cisco          
+```
+
+### Probe Request Analysis
+```
+PROBE REQUEST ANALYSIS:
+==========================================================================================
+Client MAC         Probed SSIDs                                     
+------------------------------------------------------------------------------------------
+00:11:22:33:44:55  MyHome_WiFi, Office_Network, Guest_WiFi ... (+3 more)
 ```
 
 ### All Networks Section
 ```
 ALL NETWORKS:
-================================================================================
-BSSID              SSID                     Channel  Signal   Security   Hidden  
-----------------------------------------------------------------------------------
-aa:bb:cc:dd:ee:ff  <hidden>                6        -45      WPA2       Yes     
-11:22:33:44:55:66  MyNetwork               11       -67      WPA2       No      
+====================================================================================================
+BSSID              SSID                     Channel  Signal   Security   Hidden   Vendor         
+----------------------------------------------------------------------------------------------------
+aa:bb:cc:dd:ee:ff  <hidden>                6        -45      WPA2       Yes      Netgear        
+11:22:33:44:55:66  MyNetwork               11       -67      WPA2       No       Cisco          
+```
+
+### Advanced Insights
+```
+ADVANCED INSIGHTS:
+==========================================================================================
+Channel Distribution:
+  Channel 1: 5 networks
+  Channel 6: 8 networks
+  Channel 11: 3 networks
+
+Security Analysis:
+  WPA2: 12 networks
+  WPA: 3 networks
+  Open: 1 network
+
+Hidden Network Insights:
+  Networks with probable SSID: 2
+  Success rate: 66.7%
+
+Vendor Distribution:
+  Netgear: 5 networks
+  Cisco: 3 networks
+  Apple: 2 networks
 ```
 
 ## Technical Details
