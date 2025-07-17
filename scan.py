@@ -710,16 +710,26 @@ class HiddenNetworkScanner:
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Hidden Networks Scanner - Discover and display hidden wireless networks'
+        description='Enhanced Hidden Networks Scanner - Advanced SSID discovery with Scapy'
     )
     parser.add_argument('-i', '--interface', help='Wireless interface to use')
     parser.add_argument('-t', '--timeout', type=int, default=30, 
                        help='Scan timeout in seconds (default: 30)')
     parser.add_argument('-p', '--passive', action='store_true',
-                       help='Enable passive monitoring (requires monitor mode support)')
+                       help='Enable passive monitoring with probe requests')
     parser.add_argument('-o', '--output', help='Output file for results (JSON format)')
     parser.add_argument('-v', '--verbose', action='store_true',
                        help='Verbose output')
+    parser.add_argument('--no-scapy', action='store_true',
+                       help='Disable Scapy-based scanning')
+    parser.add_argument('--enable-deauth', action='store_true',
+                       help='Enable deauth attacks (EDUCATIONAL PURPOSE ONLY)')
+    parser.add_argument('--probe-ssids', nargs='*',
+                       help='Specific SSIDs to probe for')
+    parser.add_argument('--deauth-target', 
+                       help='Target BSSID for deauth attack (requires --enable-deauth)')
+    parser.add_argument('--deauth-count', type=int, default=10,
+                       help='Number of deauth packets to send (default: 10)')
     
     args = parser.parse_args()
     
@@ -727,24 +737,46 @@ def main():
         print("This tool requires root privileges. Please run with sudo.")
         sys.exit(1)
     
-    print("Hidden Networks Scanner")
-    print("=" * 50)
+    # Warning for deauth attacks
+    if args.enable_deauth:
+        print("WARNING: Deauth attacks enabled!")
+        print("This feature is for EDUCATIONAL PURPOSES ONLY.")
+        print("Use responsibly and only on networks you own or have permission to test.")
+        response = input("Do you understand and agree? (yes/no): ")
+        if response.lower() != 'yes':
+            print("Exiting...")
+            sys.exit(1)
+    
+    print("Enhanced Hidden Networks Scanner with Scapy")
+    print("=" * 60)
     
     scanner = HiddenNetworkScanner(
         interface=args.interface,
         timeout=args.timeout,
-        passive_scan=args.passive
+        passive_scan=args.passive,
+        use_scapy=not args.no_scapy
     )
     
+    scanner.verbose = args.verbose
+    scanner.deauth_enabled = args.enable_deauth
+    
     try:
+        # Perform main scan
         networks = scanner.scan_networks()
         scanner.display_results(networks)
         
+        # Perform deauth attack if requested
+        if args.enable_deauth and args.deauth_target:
+            print(f"\nPerforming deauth attack on {args.deauth_target}...")
+            scanner.perform_deauth_attack(args.deauth_target, count=args.deauth_count)
+        
+        # Export results
         if args.output:
             scanner.export_results(networks, args.output)
             
     except KeyboardInterrupt:
         print("\nScan interrupted by user")
+        scanner.scanning = False
     except Exception as e:
         print(f"Error during scan: {e}")
         if args.verbose:
