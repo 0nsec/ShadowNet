@@ -581,35 +581,53 @@ class HiddenNetworkScanner:
         return list(unique_networks.values())
     
     def display_results(self, networks):
-        """Display scan results"""
-        print(f"\n{'='*80}")
-        print("HIDDEN NETWORKS SCAN RESULTS")
-        print(f"{'='*80}")
+        """Display scan results with enhanced information"""
+        print(f"\n{'='*90}")
+        print("ENHANCED HIDDEN NETWORKS SCAN RESULTS")
+        print(f"{'='*90}")
         print(f"Scan completed at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"Total networks found: {len(networks)}")
         print(f"Hidden networks: {len(self.hidden_networks)}")
+        print(f"Probe requests captured: {len(self.probe_requests)}")
+        print(f"Unique clients detected: {sum(len(clients) for clients in self.clients.values())}")
         
         if self.hidden_networks:
-            print(f"\n{'='*80}")
+            print(f"\n{'='*90}")
             print("HIDDEN NETWORKS DETECTED:")
-            print(f"{'='*80}")
-            print(f"{'BSSID':<18} {'SSID':<20} {'Channel':<8} {'Signal':<8} {'Security':<10}")
-            print("-" * 80)
+            print(f"{'='*90}")
+            print(f"{'BSSID':<18} {'SSID':<20} {'Probable SSID':<15} {'Channel':<8} {'Signal':<8} {'Security':<10} {'Vendor':<15}")
+            print("-" * 90)
             
             for network in self.hidden_networks:
                 bssid = network.get('bssid', 'Unknown')
                 ssid = network.get('ssid', '<hidden>')
+                probable_ssid = network.get('probable_ssid', '-')
                 channel = network.get('channel', 'Unknown')
                 signal = network.get('signal', 0)
                 security = network.get('security', 'Unknown')
+                vendor = network.get('vendor', 'Unknown')
                 
-                print(f"{bssid:<18} {ssid:<20} {channel:<8} {signal:<8} {security:<10}")
+                print(f"{bssid:<18} {ssid:<20} {probable_ssid:<15} {channel:<8} {signal:<8} {security:<10} {vendor:<15}")
         
-        print(f"\n{'='*80}")
+        # Show probe request analysis
+        if self.probe_requests:
+            print(f"\n{'='*90}")
+            print("PROBE REQUEST ANALYSIS:")
+            print(f"{'='*90}")
+            print(f"{'Client MAC':<18} {'Probed SSIDs':<50}")
+            print("-" * 90)
+            
+            for client_mac, ssids in list(self.probe_requests.items())[:10]:  # Show first 10
+                ssid_list = ', '.join(list(ssids)[:5])  # Show first 5 SSIDs
+                if len(ssids) > 5:
+                    ssid_list += f" ... (+{len(ssids)-5} more)"
+                print(f"{client_mac:<18} {ssid_list:<50}")
+        
+        print(f"\n{'='*90}")
         print("ALL NETWORKS:")
-        print(f"{'='*80}")
-        print(f"{'BSSID':<18} {'SSID':<25} {'Channel':<8} {'Signal':<8} {'Security':<10} {'Hidden':<8}")
-        print("-" * 90)
+        print(f"{'='*90}")
+        print(f"{'BSSID':<18} {'SSID':<25} {'Channel':<8} {'Signal':<8} {'Security':<10} {'Hidden':<8} {'Vendor':<15}")
+        print("-" * 100)
         
         for network in sorted(networks, key=lambda x: x.get('signal', 0), reverse=True):
             bssid = network.get('bssid', 'Unknown')
@@ -618,8 +636,13 @@ class HiddenNetworkScanner:
             signal = network.get('signal', 0)
             security = network.get('security', 'Unknown')
             hidden = 'Yes' if network.get('hidden', False) else 'No'
+            vendor = network.get('vendor', 'Unknown')
             
-            print(f"{bssid:<18} {ssid:<25} {channel:<8} {signal:<8} {security:<10} {hidden:<8}")
+            print(f"{bssid:<18} {ssid:<25} {channel:<8} {signal:<8} {security:<10} {hidden:<8} {vendor:<15}")
+        
+        # Show additional insights
+        if self.use_scapy:
+            self.display_insights(networks)
     
     def export_results(self, networks, filename=None):
         """Export results to JSON file"""
