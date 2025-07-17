@@ -53,32 +53,28 @@ chmod +x scan.py
 ### Basic Usage
 
 ```bash
-# Basic scan (requires root privileges)
+
 sudo python3 scan.py
 
-# Or make it executable and run directly
 sudo ./scan.py
 ```
 
 ### Advanced Options
 
 ```bash
-# Specify wireless interface
+
 sudo python3 scan.py -i wlan0
 
-# Set custom timeout (default: 30 seconds)
+
 sudo python3 scan.py -t 60
 
-# Enable passive monitoring (requires monitor mode support)
 sudo python3 scan.py -p
 
-# Export results to JSON file
+
 sudo python3 scan.py -o scan_results.json
 
-# Verbose output for debugging
 sudo python3 scan.py -v
 
-# Combine options
 sudo python3 scan.py -i wlan0 -t 45 -p -o results.json -v
 ```
 
