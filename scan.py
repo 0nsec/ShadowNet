@@ -519,7 +519,7 @@ class HiddenNetworkScanner:
         return list(self.networks.values())
     
     def scan_networks(self):
-        """Main network scanning function"""
+        """Main network scanning function with enhanced Scapy support"""
         if not self.check_requirements():
             return []
         
@@ -536,12 +536,22 @@ class HiddenNetworkScanner:
         for interface in interfaces:
             print(f"\nScanning on interface: {interface}")
             
-            # Regular scan with iwlist
+            # Try Scapy-based scanning first if available
+            if self.use_scapy:
+                try:
+                    scapy_networks = self.scapy_scan(interface, self.timeout)
+                    all_networks.extend(scapy_networks)
+                    print(f"Scapy scan found {len(scapy_networks)} networks")
+                except Exception as e:
+                    print(f"Scapy scan failed: {e}")
+                    print("Falling back to traditional methods...")
+            
+            # Regular scan with iwlist as fallback
             networks = self.scan_with_iwlist(interface)
             all_networks.extend(networks)
             
-            # If passive scan is enabled, try monitor mode
-            if self.passive_scan:
+            # If passive scan is enabled and Scapy failed, try monitor mode
+            if self.passive_scan and not self.use_scapy:
                 original_mode = True
                 if self.set_monitor_mode(interface):
                     passive_networks = self.passive_monitor_scan(interface, self.timeout)
@@ -563,7 +573,8 @@ class HiddenNetworkScanner:
                 ssid = network.get('ssid', '')
                 if not ssid or ssid == '<hidden>' or ssid == '""' or len(ssid.strip()) == 0:
                     network['hidden'] = True
-                    self.hidden_networks.append(network)
+                    if network not in self.hidden_networks:
+                        self.hidden_networks.append(network)
                 else:
                     network['hidden'] = False
         
