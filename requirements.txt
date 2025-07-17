@@ -1,0 +1,11 @@
+# Hidden Networks Scanner Requirements
+# This tool uses only Python standard library modules
+# No additional pip packages are required
+
+# System dependencies (install via package manager):
+# - wireless-tools
+# - iw  
+# - network-manager
+
+# Python version requirement:
+# python>=3.6
