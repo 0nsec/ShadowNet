@@ -644,6 +644,49 @@ class HiddenNetworkScanner:
         if self.use_scapy:
             self.display_insights(networks)
     
+    def display_insights(self, networks):
+        """Display additional insights from Scapy analysis"""
+        print(f"\n{'='*90}")
+        print("ADVANCED INSIGHTS:")
+        print(f"{'='*90}")
+        
+        # Channel distribution
+        channels = {}
+        for network in networks:
+            channel = network.get('channel', 'Unknown')
+            channels[channel] = channels.get(channel, 0) + 1
+        
+        print("Channel Distribution:")
+        for channel, count in sorted(channels.items()):
+            print(f"  Channel {channel}: {count} networks")
+        
+        # Security analysis
+        security_types = {}
+        for network in networks:
+            security = network.get('security', 'Unknown')
+            security_types[security] = security_types.get(security, 0) + 1
+        
+        print(f"\nSecurity Analysis:")
+        for security, count in sorted(security_types.items()):
+            print(f"  {security}: {count} networks")
+        
+        # Hidden network insights
+        hidden_with_probable = sum(1 for net in self.hidden_networks if net.get('probable_ssid'))
+        if hidden_with_probable > 0:
+            print(f"\nHidden Network Insights:")
+            print(f"  Networks with probable SSID: {hidden_with_probable}")
+            print(f"  Success rate: {(hidden_with_probable/len(self.hidden_networks))*100:.1f}%")
+        
+        # Vendor analysis
+        vendors = {}
+        for network in networks:
+            vendor = network.get('vendor', 'Unknown')
+            vendors[vendor] = vendors.get(vendor, 0) + 1
+        
+        print(f"\nVendor Distribution:")
+        for vendor, count in sorted(vendors.items(), key=lambda x: x[1], reverse=True)[:5]:
+            print(f"  {vendor}: {count} networks")
+    
     def export_results(self, networks, filename=None):
         """Export results to JSON file"""
         if not filename:
