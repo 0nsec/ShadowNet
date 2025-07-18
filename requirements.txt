@@ -4,6 +4,8 @@
 # Python packages
 scapy>=2.4.5
 netifaces>=0.11.0
+colorama>=0.4.4
+argparse
 
 # System dependencies (install via package manager):
 # - wireless-tools

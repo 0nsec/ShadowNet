@@ -1,23 +1,37 @@
 #!/bin/bash
-echo "Hidden Networks Scanner Setup"
-echo "============================="
 
-if [[ $EUID -eq 0 ]]; then
-   echo "Please do not run this setup script as root"
-   echo "The script will prompt for sudo when needed"
+echo "SHADOWNET SETUP SCRIPT"
+echo "======================"
+
+if [[ $EUID -ne 0 ]]; then
+   echo "THIS SCRIPT MUST BE RUN AS ROOT" 
+   echo "USE: sudo ./setup.sh"
    exit 1
 fi
 
-if [[ -f /etc/debian_version ]]; then
-    OS="debian"
-elif [[ -f /etc/redhat-release ]]; then
-    OS="redhat"
-elif [[ -f /etc/arch-release ]]; then
-    OS="arch"
-else
-    echo "Unsupported operating system"
-    exit 1
+echo "[*] UPDATING PACKAGE LIST..."
+apt-get update -qq
+
+echo "[*] INSTALLING CORE DEPENDENCIES..."
+apt-get install -y aircrack-ng nmap wireless-tools net-tools
+
+echo "[*] INSTALLING PYTHON DEPENDENCIES..."
+pip3 install scapy netifaces colorama
+
+echo "[*] SETTING PERMISSIONS..."
+chmod +x scan.py
+
+echo "[*] CREATING WORDLIST..."
+if [ ! -f "list.txt" ]; then
+    echo "[*] WORDLIST ALREADY EXISTS"
 fi
+
+echo ""
+echo "SHADOWNET SETUP COMPLETE"
+echo "========================"
+echo "RUN WITH: sudo python3 scan.py"
+echo "LEGACY MODE: sudo python3 scan.py --legacy"
+echo ""
 
 echo "Detected OS: $OS"
 

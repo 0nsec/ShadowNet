@@ -11,6 +11,14 @@ import signal
 from collections import defaultdict
 from datetime import datetime
 import os
+from pathlib import Path
+
+try:
+    from colorama import init, Fore, Style
+    init(autoreset=True)
+    COLORAMA_AVAILABLE = True
+except ImportError:
+    COLORAMA_AVAILABLE = False
 
 try:
     from scapy.all import *
@@ -20,6 +28,716 @@ try:
 except ImportError:
     print("Warning: Scapy not available. Some advanced features will be disabled.")
     SCAPY_AVAILABLE = False
+
+
+ASCII_ART = [
+    r" /$$$$$$  /$$   /$$  /$$$$$$  /$$$$$$$   /$$$$$$  /$$      /$$ /$$   /$$ /$$$$$$$$ /$$$$$$$$",
+    r"/$$__  $$| $$  | $$ /$$__  $$| $$__  $$ /$$__  $$| $$  /$ | $$| $$$ | $$| $$_____/|__  $$__/",
+    r"| $$  \__/| $$  | $$| $$  \ $$| $$  \ $$| $$  \ $$| $$ /$$$| $$| $$$$| $$| $$         | $$   ",
+    r"|  $$$$$$ | $$$$$$$$| $$$$$$$$| $$  | $$| $$  | $$| $$/$$ $$ $$| $$ $$ $$| $$$$$      | $$   ",
+    r" \____  $$| $$__  $$| $$__  $$| $$  | $$| $$  | $$| $$$$_  $$$$| $$  $$$$| $$__/      | $$   ",
+    r" /$$  \ $$| $$  | $$| $$  | $$| $$  | $$| $$  | $$| $$$/ \  $$$| $$\  $$$| $$         | $$   ",
+    r"|  $$$$$$/| $$  | $$| $$  | $$| $$$$$$$/|  $$$$$$/| $$/   \  $$| $$ \  $$| $$$$$$$$   | $$   ",
+    r" \______/ |__/  |__/|__/  |__/|_______/  \______/ |__/     \__/|__/  \__/|________/   |__/   "
+]
+
+
+def clear_screen():
+    os.system('clear' if os.name == 'posix' else 'cls')
+
+
+def shadownet_intro():
+    if not COLORAMA_AVAILABLE:
+        print("SHADOWNET v2.0 - NETWORK INFILTRATION SUITE")
+        time.sleep(2)
+        return
+    
+    purple_colors = [Fore.MAGENTA, Fore.LIGHTMAGENTA_EX, Fore.BLUE, Fore.WHITE]
+    
+    for cycle in range(8):
+        clear_screen()
+        for line in ASCII_ART:
+            glitched_line = ""
+            for char in line:
+                if random.random() < 0.08:
+                    glitched_line += random.choice(purple_colors) + chr(random.randint(33, 126))
+                else:
+                    glitched_line += Fore.MAGENTA + Style.BRIGHT + char
+            print(glitched_line)
+        time.sleep(0.15)
+    
+    clear_screen()
+    for line in ASCII_ART:
+        print(Fore.MAGENTA + Style.BRIGHT + line)
+    
+    print(Fore.CYAN + Style.BRIGHT + "\n" + "="*78)
+    print(Fore.WHITE + Style.BRIGHT + "             NETWORK INFILTRATION SUITE")
+    print(Fore.WHITE + Style.BRIGHT + "               DEDSEC OPERATIONS UNIT")
+    print(Fore.CYAN + Style.BRIGHT + "="*78)
+    time.sleep(2)
+
+
+class ShadowNet:
+    def __init__(self):
+        self.banner = """
+╔══════════════════════════════════════════════════════════════════════════╗
+║                             SHADOWNET v2.0                               ║
+║  [01] NETWORK RECONNAISSANCE      [05] WIRELESS BRUTEFORCE               ║
+║  [02] HIDDEN SSID DISCOVERY       [06] HANDSHAKE CAPTURE                 ║
+║  [03] ACCESS POINT ANALYSIS       [07] DICTIONARY ATTACK                 ║
+║  [04] DEAUTH OPERATIONS           [08] SYSTEM INFILTRATION               ║
+║  [09] WORDLIST MANAGEMENT         [10] FILE OPERATIONS                   ║
+║                                                                          ║
+║  [99] EXIT SHADOWNET                                                     ║
+║                                                                          ║
+╚══════════════════════════════════════════════════════════════════════════╝
+        """
+        self.wordlist_path = "/workspaces/ShadowNet/list.txt"
+        self.scanner = None
+        
+    def display_banner(self):
+        os.system('clear' if os.name == 'posix' else 'cls')
+        if COLORAMA_AVAILABLE:
+            print(Fore.CYAN + Style.BRIGHT + self.banner)
+            print(Fore.YELLOW + f"CURRENT TIME: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            print(Fore.GREEN + f"OPERATOR: DEDSEC_OPERATIVE")
+            print(Fore.CYAN + Style.BRIGHT + "=" * 78)
+        else:
+            print(self.banner)
+            print(f"CURRENT TIME: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            print(f"OPERATOR: DEDSEC_OPERATIVE")
+            print("=" * 78)
+        
+    def check_dependencies(self):
+        required_tools = ['aircrack-ng', 'airodump-ng', 'aireplay-ng', 'nmap', 'iwlist']
+        missing_tools = []
+        
+        for tool in required_tools:
+            if subprocess.call(['which', tool], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) != 0:
+                missing_tools.append(tool)
+        
+        if missing_tools:
+            print(f"[!] MISSING REQUIRED TOOLS: {', '.join(missing_tools)}")
+            print("[!] INSTALL WITH: sudo apt-get install aircrack-ng nmap wireless-tools")
+            return False
+        return True
+    
+    def create_wordlist(self):
+        if not Path(self.wordlist_path).exists():
+            default_passwords = [
+                "password", "123456", "admin", "root", "toor", "pass",
+                "12345678", "qwerty", "123456789", "letmein", "1234567890",
+                "football", "iloveyou", "admin123", "welcome", "monkey",
+                "login", "abc123", "starwars", "123123", "dragon",
+                "passw0rd", "master", "hello", "freedom", "whatever",
+                "qazwsx", "trustno1", "jordan23", "harley", "password123",
+                "princess", "solo", "abc", "qwerty123", "password1",
+                "welcome123", "admin1", "root123", "test", "guest",
+                "user", "superman", "batman", "shadow", "hacker",
+                "dedsec", "watchdogs", "network", "wireless", "internet"
+            ]
+            
+            with open(self.wordlist_path, 'w') as f:
+                for password in default_passwords:
+                    f.write(password + '\n')
+            print(f"[+] WORDLIST CREATED: {self.wordlist_path}")
+    
+    def network_recon(self):
+        print("\n[*] NETWORK RECONNAISSANCE MODULE")
+        print("=" * 50)
+        target = input("[+] ENTER TARGET RANGE (192.168.1.0/24): ")
+        
+        if not target:
+            print("[!] NO TARGET SPECIFIED")
+            return
+            
+        print(f"[*] SCANNING {target}...")
+        cmd = f"nmap -sn {target}"
+        subprocess.run(cmd, shell=True)
+        
+        input("\n[PRESS ENTER TO CONTINUE]")
+    
+    def hidden_ssid_discovery(self):
+        print("\n[*] HIDDEN SSID DISCOVERY MODULE")
+        print("=" * 50)
+        
+        if not hasattr(self, 'scanner') or self.scanner is None:
+            self.scanner = HiddenNetworkScanner(timeout=60, passive_scan=True, use_scapy=True)
+        
+        try:
+            networks = self.scanner.scan_networks()
+            self.scanner.display_results(networks)
+        except Exception as e:
+            print(f"[!] SCAN ERROR: {e}")
+        
+        input("\n[PRESS ENTER TO CONTINUE]")
+    
+    def access_point_analysis(self):
+        print("\n[*] ACCESS POINT ANALYSIS MODULE")
+        print("=" * 50)
+        print("[1] LIST WIRELESS INTERFACES")
+        print("[2] ENABLE MONITOR MODE")
+        print("[3] SCAN ACCESS POINTS")
+        print("[4] DETAILED NETWORK INFO")
+        
+        choice = input("[+] SELECT OPTION: ")
+        
+        if choice == "1":
+            subprocess.run("iwconfig", shell=True)
+        elif choice == "2":
+            interface = input("[+] INTERFACE (wlan0): ")
+            print(f"[*] ENABLING MONITOR MODE ON {interface}...")
+            subprocess.run(f"sudo airmon-ng start {interface}", shell=True)
+        elif choice == "3":
+            interface = input("[+] MONITOR INTERFACE (wlan0mon): ")
+            print(f"[*] SCANNING ACCESS POINTS ON {interface}...")
+            subprocess.run(f"sudo airodump-ng {interface}", shell=True)
+        elif choice == "4":
+            interface = input("[+] INTERFACE: ")
+            subprocess.run(f"sudo iwlist {interface} scan", shell=True)
+        
+        input("\n[PRESS ENTER TO CONTINUE]")
+    
+    def deauth_operations(self):
+        print("\n[*] DEAUTH OPERATIONS MODULE")
+        print("=" * 50)
+        print("[!] WARNING: FOR AUTHORIZED TESTING ONLY")
+        
+        confirm = input("[+] CONFIRM AUTHORIZATION (YES/NO): ")
+        if confirm.upper() != "YES":
+            print("[!] OPERATION CANCELLED")
+            return
+        
+        interface = input("[+] MONITOR INTERFACE: ")
+        target_bssid = input("[+] TARGET BSSID: ")
+        client_mac = input("[+] CLIENT MAC (ENTER FOR BROADCAST): ")
+        packets = input("[+] PACKET COUNT (10): ") or "10"
+        
+        if not client_mac:
+            client_mac = "FF:FF:FF:FF:FF:FF"
+        
+        print(f"[*] LAUNCHING DEAUTH ATTACK...")
+        cmd = f"sudo aireplay-ng -0 {packets} -a {target_bssid} -c {client_mac} {interface}"
+        subprocess.run(cmd, shell=True)
+        
+        input("\n[PRESS ENTER TO CONTINUE]")
+    
+    def wireless_bruteforce(self):
+        print("\n[*] WIRELESS BRUTEFORCE MODULE")
+        print("=" * 50)
+        
+        print("[1] USE DEFAULT WORDLIST")
+        print("[2] SPECIFY CUSTOM WORDLIST")
+        
+        choice = input("[+] SELECT OPTION: ")
+        
+        if choice == "1":
+            wordlist = self.wordlist_path
+            if not Path(wordlist).exists():
+                self.create_wordlist()
+        elif choice == "2":
+            wordlist = input("[+] WORDLIST FILE PATH: ")
+            if not wordlist or not Path(wordlist).exists():
+                print("[!] WORDLIST FILE NOT FOUND")
+                return
+        else:
+            print("[!] INVALID SELECTION")
+            return
+        
+        handshake_file = input("[+] HANDSHAKE FILE (.cap): ")
+        if not handshake_file or not Path(handshake_file).exists():
+            print("[!] HANDSHAKE FILE NOT FOUND")
+            return
+        
+        print(f"[*] USING WORDLIST: {wordlist}")
+        print(f"[*] STARTING BRUTEFORCE ATTACK...")
+        
+        cmd = f"aircrack-ng -w {wordlist} {handshake_file}"
+        subprocess.run(cmd, shell=True)
+        
+        input("\n[PRESS ENTER TO CONTINUE]")
+    
+    def handshake_capture(self):
+        print("\n[*] HANDSHAKE CAPTURE MODULE")
+        print("=" * 50)
+        
+        interface = input("[+] MONITOR INTERFACE: ")
+        target_bssid = input("[+] TARGET BSSID: ")
+        channel = input("[+] TARGET CHANNEL: ")
+        output_file = input("[+] OUTPUT FILE NAME: ") or "handshake"
+        
+        print(f"[*] CAPTURING HANDSHAKE FROM {target_bssid}")
+        print("[*] CTRL+C TO STOP CAPTURE")
+        
+        cmd = f"sudo airodump-ng -c {channel} --bssid {target_bssid} -w {output_file} {interface}"
+        try:
+            subprocess.run(cmd, shell=True)
+        except KeyboardInterrupt:
+            print("\n[*] CAPTURE STOPPED")
+        
+        input("\n[PRESS ENTER TO CONTINUE]")
+    
+    def dictionary_attack(self):
+        print("\n[*] DICTIONARY ATTACK MODULE")
+        print("=" * 50)
+        
+        print("[1] USE DEFAULT WORDLIST")
+        print("[2] SPECIFY CUSTOM WORDLIST")
+        print("[3] GENERATE NEW WORDLIST")
+        
+        choice = input("[+] SELECT OPTION: ")
+        
+        if choice == "1":
+            wordlist = self.wordlist_path
+            if not Path(wordlist).exists():
+                self.create_wordlist()
+        elif choice == "2":
+            wordlist = input("[+] WORDLIST FILE PATH: ")
+            if not wordlist or not Path(wordlist).exists():
+                print("[!] WORDLIST FILE NOT FOUND")
+                return
+        elif choice == "3":
+            self.generate_custom_wordlist()
+            wordlist = self.wordlist_path
+        else:
+            print("[!] INVALID SELECTION")
+            return
+        
+        handshake_file = input("[+] HANDSHAKE FILE: ")
+        if not Path(handshake_file).exists():
+            print("[!] HANDSHAKE FILE NOT FOUND")
+            return
+        
+        print(f"[*] USING WORDLIST: {wordlist}")
+        print(f"[*] LAUNCHING DICTIONARY ATTACK...")
+        cmd = f"aircrack-ng -w {wordlist} {handshake_file}"
+        subprocess.run(cmd, shell=True)
+        
+        input("\n[PRESS ENTER TO CONTINUE]")
+    
+    def generate_custom_wordlist(self):
+        print("\n[*] WORDLIST GENERATOR")
+        print("=" * 30)
+        
+        base_words = input("[+] BASE WORDS (comma separated): ").split(',')
+        min_length = int(input("[+] MIN LENGTH (8): ") or "8")
+        max_length = int(input("[+] MAX LENGTH (16): ") or "16")
+        
+        wordlist = []
+        
+        for word in base_words:
+            word = word.strip()
+            wordlist.append(word)
+            wordlist.append(word.upper())
+            wordlist.append(word.lower())
+            wordlist.append(word.capitalize())
+            
+            for i in range(100):
+                wordlist.append(f"{word}{i}")
+                wordlist.append(f"{word}{i:02d}")
+                wordlist.append(f"{word}{i:03d}")
+            
+            for year in range(2000, 2026):
+                wordlist.append(f"{word}{year}")
+        
+        common_suffixes = ["123", "456", "789", "000", "111", "!", "@", "#", "$"]
+        for word in base_words:
+            for suffix in common_suffixes:
+                wordlist.append(f"{word.strip()}{suffix}")
+        
+        filtered_wordlist = [w for w in wordlist if min_length <= len(w) <= max_length]
+        
+        with open(self.wordlist_path, 'w') as f:
+            for password in set(filtered_wordlist):
+                f.write(password + '\n')
+        
+        print(f"[+] GENERATED {len(set(filtered_wordlist))} PASSWORDS")
+    
+    def wordlist_management(self):
+        print("\n[*] WORDLIST MANAGEMENT MODULE")
+        print("=" * 50)
+        print("[1] VIEW DEFAULT WORDLIST")
+        print("[2] CREATE CUSTOM WORDLIST")
+        print("[3] MERGE WORDLISTS")
+        print("[4] WORDLIST STATISTICS")
+        print("[5] DOWNLOAD WORDLISTS")
+        
+        choice = input("[+] SELECT OPTION: ")
+        
+        if choice == "1":
+            self.view_wordlist()
+        elif choice == "2":
+            self.create_custom_wordlist()
+        elif choice == "3":
+            self.merge_wordlists()
+        elif choice == "4":
+            self.wordlist_stats()
+        elif choice == "5":
+            self.download_wordlists()
+        
+        input("\n[PRESS ENTER TO CONTINUE]")
+    
+    def view_wordlist(self):
+        wordlist_path = input("[+] WORDLIST PATH (ENTER FOR DEFAULT): ") or self.wordlist_path
+        
+        if not Path(wordlist_path).exists():
+            print("[!] WORDLIST NOT FOUND")
+            return
+        
+        try:
+            with open(wordlist_path, 'r') as f:
+                lines = f.readlines()
+            
+            print(f"\n[*] WORDLIST: {wordlist_path}")
+            print(f"[*] TOTAL PASSWORDS: {len(lines)}")
+            print("=" * 30)
+            
+            show_all = input("[+] SHOW ALL PASSWORDS? (y/N): ").lower() == 'y'
+            
+            if show_all:
+                for i, line in enumerate(lines, 1):
+                    print(f"{i:4d}: {line.strip()}")
+            else:
+                print("FIRST 20 PASSWORDS:")
+                for i, line in enumerate(lines[:20], 1):
+                    print(f"{i:4d}: {line.strip()}")
+                if len(lines) > 20:
+                    print(f"... AND {len(lines) - 20} MORE")
+                    
+        except Exception as e:
+            print(f"[!] ERROR READING WORDLIST: {e}")
+    
+    def create_custom_wordlist(self):
+        print("\n[*] CUSTOM WORDLIST CREATOR")
+        print("=" * 30)
+        
+        output_file = input("[+] OUTPUT FILENAME: ") or "custom_wordlist.txt"
+        
+        print("\n[1] MANUAL ENTRY")
+        print("[2] PATTERN GENERATION")
+        print("[3] IMPORT FROM FILE")
+        
+        method = input("[+] SELECT METHOD: ")
+        
+        passwords = []
+        
+        if method == "1":
+            print("[*] ENTER PASSWORDS (EMPTY LINE TO FINISH)")
+            while True:
+                password = input("PASSWORD: ")
+                if not password:
+                    break
+                passwords.append(password)
+        
+        elif method == "2":
+            base_word = input("[+] BASE WORD: ")
+            include_numbers = input("[+] INCLUDE NUMBERS? (y/N): ").lower() == 'y'
+            include_years = input("[+] INCLUDE YEARS? (y/N): ").lower() == 'y'
+            include_symbols = input("[+] INCLUDE SYMBOLS? (y/N): ").lower() == 'y'
+            
+            passwords.append(base_word)
+            passwords.append(base_word.upper())
+            passwords.append(base_word.lower())
+            passwords.append(base_word.capitalize())
+            
+            if include_numbers:
+                for i in range(1000):
+                    passwords.extend([
+                        f"{base_word}{i}",
+                        f"{i}{base_word}",
+                        f"{base_word}{i:02d}",
+                        f"{base_word}{i:03d}"
+                    ])
+            
+            if include_years:
+                for year in range(1990, 2030):
+                    passwords.append(f"{base_word}{year}")
+            
+            if include_symbols:
+                symbols = ["!", "@", "#", "$", "%", "123", "321"]
+                for symbol in symbols:
+                    passwords.append(f"{base_word}{symbol}")
+        
+        elif method == "3":
+            source_file = input("[+] SOURCE FILE PATH: ")
+            if Path(source_file).exists():
+                with open(source_file, 'r') as f:
+                    passwords = [line.strip() for line in f.readlines()]
+            else:
+                print("[!] SOURCE FILE NOT FOUND")
+                return
+        
+        if passwords:
+            with open(output_file, 'w') as f:
+                for password in set(passwords):
+                    if password.strip():
+                        f.write(password.strip() + '\n')
+            
+            print(f"[+] CREATED WORDLIST: {output_file}")
+            print(f"[+] TOTAL PASSWORDS: {len(set(passwords))}")
+    
+    def merge_wordlists(self):
+        print("\n[*] WORDLIST MERGER")
+        print("=" * 20)
+        
+        wordlists = []
+        print("[*] ENTER WORDLIST PATHS (EMPTY LINE TO FINISH)")
+        
+        while True:
+            path = input("WORDLIST PATH: ")
+            if not path:
+                break
+            if Path(path).exists():
+                wordlists.append(path)
+            else:
+                print("[!] FILE NOT FOUND")
+        
+        if len(wordlists) < 2:
+            print("[!] NEED AT LEAST 2 WORDLISTS")
+            return
+        
+        output_file = input("[+] OUTPUT FILENAME: ") or "merged_wordlist.txt"
+        
+        all_passwords = set()
+        
+        for wordlist in wordlists:
+            try:
+                with open(wordlist, 'r') as f:
+                    passwords = [line.strip() for line in f.readlines()]
+                    all_passwords.update(passwords)
+                print(f"[+] LOADED {len(passwords)} FROM {wordlist}")
+            except Exception as e:
+                print(f"[!] ERROR READING {wordlist}: {e}")
+        
+        with open(output_file, 'w') as f:
+            for password in sorted(all_passwords):
+                if password:
+                    f.write(password + '\n')
+        
+        print(f"[+] MERGED WORDLIST CREATED: {output_file}")
+        print(f"[+] TOTAL UNIQUE PASSWORDS: {len(all_passwords)}")
+    
+    def wordlist_stats(self):
+        wordlist_path = input("[+] WORDLIST PATH: ")
+        
+        if not Path(wordlist_path).exists():
+            print("[!] WORDLIST NOT FOUND")
+            return
+        
+        try:
+            with open(wordlist_path, 'r') as f:
+                passwords = [line.strip() for line in f.readlines()]
+            
+            lengths = [len(p) for p in passwords if p]
+            
+            print(f"\n[*] WORDLIST STATISTICS: {wordlist_path}")
+            print("=" * 40)
+            print(f"TOTAL PASSWORDS: {len(passwords)}")
+            print(f"UNIQUE PASSWORDS: {len(set(passwords))}")
+            print(f"AVERAGE LENGTH: {sum(lengths)/len(lengths):.1f}")
+            print(f"MIN LENGTH: {min(lengths)}")
+            print(f"MAX LENGTH: {max(lengths)}")
+            
+            length_dist = {}
+            for length in lengths:
+                length_dist[length] = length_dist.get(length, 0) + 1
+            
+            print(f"\nLENGTH DISTRIBUTION:")
+            for length in sorted(length_dist.keys())[:10]:
+                print(f"  {length} chars: {length_dist[length]} passwords")
+                
+        except Exception as e:
+            print(f"[!] ERROR ANALYZING WORDLIST: {e}")
+    
+    def download_wordlists(self):
+        print("\n[*] WORDLIST DOWNLOADER")
+        print("=" * 25)
+        print("[1] ROCKYOU.TXT")
+        print("[2] COMMON PASSWORDS")
+        print("[3] WIFI PASSWORDS")
+        print("[4] CUSTOM URL")
+        
+        choice = input("[+] SELECT OPTION: ")
+        
+        if choice == "1":
+            url = "https://github.com/brannondorsey/naive-hashcat/releases/download/data/rockyou.txt"
+            filename = "rockyou.txt"
+        elif choice == "2":
+            url = "https://raw.githubusercontent.com/danielmiessler/SecLists/master/Passwords/Common-Credentials/10-million-password-list-top-1000000.txt"
+            filename = "common_passwords.txt"
+        elif choice == "3":
+            url = "https://raw.githubusercontent.com/danielmiessler/SecLists/master/Passwords/WiFi-WPA/probable-v2-wpa-top4800.txt"
+            filename = "wifi_passwords.txt"
+        elif choice == "4":
+            url = input("[+] URL: ")
+            filename = input("[+] FILENAME: ")
+        else:
+            return
+        
+        print(f"[*] DOWNLOADING {filename}...")
+        try:
+            import urllib.request
+            urllib.request.urlretrieve(url, filename)
+            print(f"[+] DOWNLOADED: {filename}")
+        except Exception as e:
+            print(f"[!] DOWNLOAD FAILED: {e}")
+    
+    def file_operations(self):
+        print("\n[*] FILE OPERATIONS MODULE")
+        print("=" * 50)
+        print("[1] LIST CAPTURE FILES")
+        print("[2] ANALYZE HANDSHAKE")
+        print("[3] FILE CONVERTER")
+        print("[4] CLEAN TEMP FILES")
+        
+        choice = input("[+] SELECT OPTION: ")
+        
+        if choice == "1":
+            self.list_capture_files()
+        elif choice == "2":
+            self.analyze_handshake()
+        elif choice == "3":
+            self.file_converter()
+        elif choice == "4":
+            self.clean_temp_files()
+        
+        input("\n[PRESS ENTER TO CONTINUE]")
+    
+    def list_capture_files(self):
+        print("\n[*] CAPTURE FILES")
+        print("=" * 20)
+        
+        cap_files = list(Path(".").glob("*.cap")) + list(Path(".").glob("*.pcap"))
+        
+        if not cap_files:
+            print("[!] NO CAPTURE FILES FOUND")
+            return
+        
+        for i, file in enumerate(cap_files, 1):
+            size = file.stat().st_size
+            modified = datetime.fromtimestamp(file.stat().st_mtime)
+            print(f"{i:2d}: {file.name} ({size} bytes, {modified.strftime('%Y-%m-%d %H:%M')})")
+    
+    def analyze_handshake(self):
+        handshake_file = input("[+] HANDSHAKE FILE: ")
+        
+        if not Path(handshake_file).exists():
+            print("[!] FILE NOT FOUND")
+            return
+        
+        print(f"[*] ANALYZING {handshake_file}...")
+        cmd = f"aircrack-ng {handshake_file}"
+        subprocess.run(cmd, shell=True)
+    
+    def file_converter(self):
+        print("\n[*] FILE CONVERTER")
+        print("=" * 20)
+        print("[1] CAP TO HCCAPX")
+        print("[2] PCAP TO CAP")
+        
+        choice = input("[+] SELECT CONVERSION: ")
+        
+        if choice == "1":
+            input_file = input("[+] INPUT CAP FILE: ")
+            output_file = input("[+] OUTPUT HCCAPX FILE: ")
+            
+            if Path(input_file).exists():
+                cmd = f"cap2hccapx {input_file} {output_file}"
+                subprocess.run(cmd, shell=True)
+            else:
+                print("[!] INPUT FILE NOT FOUND")
+        
+        elif choice == "2":
+            input_file = input("[+] INPUT PCAP FILE: ")
+            output_file = input("[+] OUTPUT CAP FILE: ")
+            
+            if Path(input_file).exists():
+                cmd = f"editcap {input_file} {output_file}"
+                subprocess.run(cmd, shell=True)
+            else:
+                print("[!] INPUT FILE NOT FOUND")
+    
+    def clean_temp_files(self):
+        print("\n[*] CLEANING TEMPORARY FILES...")
+        
+        temp_patterns = ["*.tmp", "*.temp", "*-01.cap", "*-01.csv", "*-01.kismet.csv"]
+        cleaned = 0
+        
+        for pattern in temp_patterns:
+            files = list(Path(".").glob(pattern))
+            for file in files:
+                file.unlink()
+                cleaned += 1
+                print(f"[+] DELETED: {file.name}")
+        
+        print(f"[+] CLEANED {cleaned} TEMPORARY FILES")
+    
+    def system_infiltration(self):
+        print("\n[*] SYSTEM INFILTRATION MODULE")
+        print("=" * 50)
+        print("[1] PORT SCAN")
+        print("[2] SERVICE ENUMERATION")
+        print("[3] VULNERABILITY SCAN")
+        print("[4] NETWORK MAPPING")
+        
+        choice = input("[+] SELECT OPTION: ")
+        target = input("[+] TARGET IP: ")
+        
+        if choice == "1":
+            cmd = f"nmap -sS -O {target}"
+        elif choice == "2":
+            cmd = f"nmap -sV -sC {target}"
+        elif choice == "3":
+            cmd = f"nmap --script vuln {target}"
+        elif choice == "4":
+            cmd = f"nmap -sn {target}/24"
+        else:
+            return
+        
+        print(f"[*] EXECUTING: {cmd}")
+        subprocess.run(cmd, shell=True)
+        
+        input("\n[PRESS ENTER TO CONTINUE]")
+    
+    def run(self):
+        shadownet_intro()
+        
+        if not self.check_dependencies():
+            input("[PRESS ENTER TO EXIT]")
+            return
+        
+        while True:
+            self.display_banner()
+            
+            choice = input("\n[+] SELECT MODULE: ")
+            
+            if choice == "01" or choice == "1":
+                self.network_recon()
+            elif choice == "02" or choice == "2":
+                self.hidden_ssid_discovery()
+            elif choice == "03" or choice == "3":
+                self.access_point_analysis()
+            elif choice == "04" or choice == "4":
+                self.deauth_operations()
+            elif choice == "05" or choice == "5":
+                self.wireless_bruteforce()
+            elif choice == "06" or choice == "6":
+                self.handshake_capture()
+            elif choice == "07" or choice == "7":
+                self.dictionary_attack()
+            elif choice == "08" or choice == "8":
+                self.system_infiltration()
+            elif choice == "09" or choice == "9":
+                self.wordlist_management()
+            elif choice == "10" or choice == "10":
+                self.file_operations()
+            elif choice == "99":
+                print("\n[*] SHADOWNET TERMINATED")
+                print("[*] DEDSEC OUT")
+                break
+            else:
+                print("\n[!] INVALID SELECTION")
+                time.sleep(1)
 
 
 class HiddenNetworkScanner:
@@ -729,6 +1447,19 @@ def main():
             traceback.print_exc()
 
 
+
+def run_shadownet():
+    shadownet = ShadowNet()
+    shadownet.run()
+
+
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) > 1 and sys.argv[1] == "--legacy":
+        main()
+    else:
+        if os.geteuid() != 0:
+            print("SHADOWNET REQUIRES ROOT PRIVILEGES")
+            print("RUN WITH: sudo python3 scan.py")
+            sys.exit(1)
+        run_shadownet()
 
