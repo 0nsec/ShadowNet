@@ -1,19 +1,13 @@
 #!/bin/bash
-
-# Hidden Networks Scanner Setup Script
-# This script installs system dependencies and sets up the tool
-
 echo "Hidden Networks Scanner Setup"
 echo "============================="
 
-# Check if running as root
 if [[ $EUID -eq 0 ]]; then
    echo "Please do not run this setup script as root"
    echo "The script will prompt for sudo when needed"
    exit 1
 fi
 
-# Detect OS
 if [[ -f /etc/debian_version ]]; then
     OS="debian"
 elif [[ -f /etc/redhat-release ]]; then
@@ -27,14 +21,12 @@ fi
 
 echo "Detected OS: $OS"
 
-# Install system dependencies
 echo "Installing system dependencies..."
 
 case $OS in
     debian)
         sudo apt-get update
         sudo apt-get install -y wireless-tools iw network-manager python3 python3-pip python3-venv tcpdump
-        # Optional: Install aircrack-ng for advanced features
         sudo apt-get install -y aircrack-ng
         ;;
     redhat)
@@ -52,16 +44,13 @@ case $OS in
         ;;
 esac
 
-# Create virtual environment if it doesn't exist
 if [ ! -d ".venv" ]; then
     echo "Creating Python virtual environment..."
     python3 -m venv .venv
 fi
 
-# Activate virtual environment
 source .venv/bin/activate
 
-# Install Python dependencies
 echo "Installing Python dependencies..."
 pip install --upgrade pip
 pip install scapy>=2.4.5 netifaces>=0.11.0
@@ -86,7 +75,6 @@ for tool in "${tools[@]}"; do
     fi
 done
 
-# Check optional tools
 echo "Checking optional tools..."
 optional_tools=("aircrack-ng" "airodump-ng")
 for tool in "${optional_tools[@]}"; do
