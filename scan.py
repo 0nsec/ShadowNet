@@ -72,7 +72,7 @@ def shadownet_intro():
     
     print(Fore.CYAN + Style.BRIGHT + "\n" + "="*78)
     print(Fore.WHITE + Style.BRIGHT + "             NETWORK INFILTRATION SUITE")
-    print(Fore.WHITE + Style.BRIGHT + "               DEDSEC OPERATIONS UNIT")
+    print(Fore.WHITE + Style.BRIGHT + "             --------------------------")
     print(Fore.CYAN + Style.BRIGHT + "="*78)
     time.sleep(2)
 
@@ -100,12 +100,12 @@ class ShadowNet:
         if COLORAMA_AVAILABLE:
             print(Fore.CYAN + Style.BRIGHT + self.banner)
             print(Fore.YELLOW + f"CURRENT TIME: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-            print(Fore.GREEN + f"OPERATOR: DEDSEC_OPERATIVE")
+            print(Fore.GREEN + f"OPERATOR: 0NSEC_OPERATIVE")
             print(Fore.CYAN + Style.BRIGHT + "=" * 78)
         else:
             print(self.banner)
             print(f"CURRENT TIME: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-            print(f"OPERATOR: DEDSEC_OPERATIVE")
+            print(f"OPERATOR: 0NSEC_OPERATIVE")
             print("=" * 78)
         
     def check_dependencies(self):
@@ -733,7 +733,7 @@ class ShadowNet:
                 self.file_operations()
             elif choice == "99":
                 print("\n[*] SHADOWNET TERMINATED")
-                print("[*] DEDSEC OUT")
+                print("[*] OUT")
                 break
             else:
                 print("\n[!] INVALID SELECTION")
