@@ -11,60 +11,68 @@
                                           
 ```
 
+
 SHADOWNET is an advanced network security testing toolkit designed for authorized penetration testing and security research.
+
+
 
 ## CORE MODULES
 
+<details>
+  <summary> Click to View All Core Modules</summary>
+
 ### 01 - NETWORK RECONNAISSANCE
-- Target network discovery
-- Host enumeration
-- Service identification
+- Target network discovery  
+- Host enumeration  
+- Service identification  
 
 ### 02 - HIDDEN SSID DISCOVERY
-- Advanced wireless network scanning
-- Hidden access point detection
-- SSID correlation analysis
+- Advanced wireless network scanning  
+- Hidden access point detection  
+- SSID correlation analysis  
 
 ### 03 - ACCESS POINT ANALYSIS
-- Wireless interface management
-- Monitor mode configuration
-- Detailed network information
+- Wireless interface management  
+- Monitor mode configuration  
+- Detailed network information  
 
 ### 04 - DEAUTH OPERATIONS
-- Deauthentication attacks
-- Client disconnection
-- Network disruption testing
+- Deauthentication attacks  
+- Client disconnection  
+- Network disruption testing  
 
 ### 05 - WIRELESS BRUTEFORCE
-- WPA/WPA2 password cracking
-- Dictionary-based attacks
-- Handshake analysis
+- WPA/WPA2 password cracking  
+- Dictionary-based attacks  
+- Handshake analysis  
 
 ### 06 - HANDSHAKE CAPTURE
-- WPA handshake collection
-- Targeted packet capture
-- Authentication monitoring
+- WPA handshake collection  
+- Targeted packet capture  
+- Authentication monitoring  
 
 ### 07 - DICTIONARY ATTACK
-- Custom wordlist selection
-- Password list management
-- Automated cracking
+- Custom wordlist selection  
+- Password list management  
+- Automated cracking  
 
 ### 08 - SYSTEM INFILTRATION
-- Port scanning
-- Service enumeration
-- Vulnerability assessment
+- Port scanning  
+- Service enumeration  
+- Vulnerability assessment  
 
 ### 09 - WORDLIST MANAGEMENT
-- View and analyze wordlists
-- Create custom wordlists
-- Merge multiple wordlists
-- Download popular wordlists
+- View and analyze wordlists  
+- Create custom wordlists  
+- Merge multiple wordlists  
+- Download popular wordlists  
 
 ### 10 - FILE OPERATIONS
-- Capture file analysis
-- Format conversion
-- Handshake verification
+- Capture file analysis  
+- Format conversion  
+- Handshake verification  
+
+</details>
 
 ## INSTALLATION
 
@@ -110,7 +118,7 @@ The tool now supports multiple wordlist options:
 
 ## LEGAL DISCLAIMER
 
-THIS TOOL IS FOR AUTHORIZED SECURITY TESTING ONLY. Users are responsible for complying with local laws and obtaining proper authorization before testing any networks. DEDSEC and the developers are not responsible for misuse.
+THIS TOOL IS FOR AUTHORIZED SECURITY TESTING ONLY. Users are responsible for complying with local laws and obtaining proper authorization before testing any networks. The developers are not responsible for misuse.
 
 ## FEATURES
 
