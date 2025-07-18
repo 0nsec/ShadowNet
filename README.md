@@ -1,4 +1,4 @@
-# Enhanced Hidden Networks Scanner
+# Hidden Networks Scanner
 
 A powerful Python tool for discovering and displaying hidden wireless networks using advanced techniques including Scapy-based 802.11 frame analysis, probe request monitoring, and active network enumeration.
 
@@ -17,7 +17,7 @@ A powerful Python tool for discovering and displaying hidden wireless networks u
 - **Security analysis**: Detailed WPA/WPA2/WEP detection
 - **Client tracking**: Monitor devices connecting to networks
 - **SSID correlation**: Match probe requests with hidden networks
-- **Passive monitoring**: Enhanced monitor mode scanning
+- **Passive monitoring**: monitor mode scanning
 - **Deauthentication attacks**: For educational/testing purposes (with safeguards)
 
 ## Requirements
@@ -98,7 +98,7 @@ sudo python3 scan.py -i wlan0 -t 45 -p -o results.json -v
 
 ## Output Format
 
-The enhanced tool provides detailed information about discovered networks:
+This tool provides detailed information about discovered networks:
 
 ### Hidden Networks Section
 ```
