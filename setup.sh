@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 echo "SHADOWNET SETUP SCRIPT"
 echo "======================"
 
@@ -9,20 +11,91 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
-echo "[*] UPDATING PACKAGE LIST..."
-apt-get update -qq
+detect_os() {
+    OS="$(uname -s)"
+    DISTRO_ID=""
+    if [[ "$OS" == "Linux" && -f /etc/os-release ]]; then
+        # shellcheck disable=SC1091
+        . /etc/os-release
+        DISTRO_ID="${ID:-}"
+    fi
+    echo "$OS|$DISTRO_ID"
+}
 
-echo "[*] INSTALLING CORE DEPENDENCIES..."
-apt-get install -y aircrack-ng nmap wireless-tools net-tools
+install_linux_deps() {
+    local pm=""
+    if command -v apt >/dev/null 2>&1; then pm=apt; fi
+    if command -v dnf >/dev/null 2>&1; then pm=dnf; fi
+    if command -v yum >/dev/null 2>&1; then pm=yum; fi
+    if command -v pacman >/dev/null 2>&1; then pm=pacman; fi
 
-echo "[*] INSTALLING PYTHON DEPENDENCIES..."
-pip3 install scapy netifaces colorama
+    echo "[*] Detected package manager: ${pm:-unknown}"
+    case "$pm" in
+        apt)
+            apt update -y
+            apt install -y wireless-tools iw network-manager tcpdump aircrack-ng nmap net-tools python3 python3-pip python3-venv
+            ;;
+        dnf)
+            dnf install -y wireless-tools iw NetworkManager tcpdump aircrack-ng nmap net-tools python3 python3-pip
+            ;;
+        yum)
+            yum install -y wireless-tools iw NetworkManager tcpdump aircrack-ng nmap net-tools python3 python3-pip
+            ;;
+        pacman)
+            pacman -Sy --noconfirm
+            pacman -S --noconfirm wireless_tools iw networkmanager tcpdump aircrack-ng nmap net-tools python python-pip
+            ;;
+        *)
+            echo "[!] Unsupported or unknown Linux package manager. Install deps manually: wireless-tools iw network-manager tcpdump aircrack-ng nmap"
+            ;;
+    esac
+}
+
+os_line=$(detect_os)
+os_name=${os_line%%|*}
+distro_id=${os_line##*|}
+
+echo "Detected OS: $os_name | Distro: ${distro_id:-unknown}"
+
+case "$os_name" in
+    Linux)
+        install_linux_deps
+        ;;
+    Darwin)
+        if command -v brew >/dev/null 2>&1; then
+            brew update
+            brew install aircrack-ng nmap tcpdump
+        else
+            echo "[!] Homebrew not found. Install from https://brew.sh or install deps manually."
+        fi
+        ;;
+    MINGW*|MSYS*|CYGWIN*|Windows_NT|Windows)
+        echo "[i] On Windows, install Npcap (with raw 802.11 support), Wireshark (optional), and aircrack-ng (optional)."
+        ;;
+    *)
+        echo "[!] Unsupported OS: $os_name"
+        ;;
+esac
 
 echo "[*] SETTING PERMISSIONS..."
 chmod +x scan.py
 
 echo "[*] CREATING WORDLIST..."
 if [ ! -f "list.txt" ]; then
+    cat > list.txt << 'EOF'
+password
+123456
+admin
+root
+toor
+pass
+12345678
+qwerty
+123456789
+letmein
+EOF
+    echo "[+] Default wordlist created at list.txt"
+else
     echo "[*] WORDLIST ALREADY EXISTS"
 fi
 
@@ -33,42 +106,14 @@ echo "RUN WITH: sudo python3 scan.py"
 echo "LEGACY MODE: sudo python3 scan.py --legacy"
 echo ""
 
-echo "Detected OS: $OS"
-
-echo "Installing system dependencies..."
-
-case $OS in
-    debian)
-        sudo apt-get update
-        sudo apt-get install -y wireless-tools iw network-manager python3 python3-pip python3-venv tcpdump
-        sudo apt-get install -y aircrack-ng
-        ;;
-    redhat)
-        if command -v dnf &> /dev/null; then
-            sudo dnf install -y wireless-tools iw NetworkManager python3 python3-pip tcpdump
-            sudo dnf install -y aircrack-ng
-        else
-            sudo yum install -y wireless-tools iw NetworkManager python3 python3-pip tcpdump
-            sudo yum install -y aircrack-ng
-        fi
-        ;;
-    arch)
-        sudo pacman -S --needed wireless_tools iw networkmanager python python-pip tcpdump
-        sudo pacman -S --needed aircrack-ng
-        ;;
-esac
+echo "Installing Python dependencies..."
+python3 -m pip install --upgrade pip
+python3 -m pip install -r requirements.txt
 
 if [ ! -d ".venv" ]; then
     echo "Creating Python virtual environment..."
     python3 -m venv .venv
 fi
-
-source .venv/bin/activate
-
-echo "Installing Python dependencies..."
-pip install --upgrade pip
-pip install scapy>=2.4.5 netifaces>=0.11.0
-
 
 echo "Making scan.py executable..."
 chmod +x scan.py
@@ -85,7 +130,6 @@ for tool in "${tools[@]}"; do
         echo "✓ $tool is installed"
     else
         echo "✗ $tool is not installed"
-        exit 1
     fi
 done
 
