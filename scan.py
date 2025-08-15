@@ -376,8 +376,8 @@ class ShadowNet:
     def check_dependencies(self):
         os_info = detect_os()
         if os_info.get('system') == 'Windows':
-            print("[i] Running on Windows: some modules require Linux tools (iwlist/airodump-ng).")
-            print("[i] You can still use System Setup to enable monitor mode via Npcap and use limited features.")
+            p_info("[i] Running on Windows: some modules require Linux tools (iwlist/airodump-ng).")
+            p_info("[i] You can still use System Setup to enable monitor mode via Npcap and use limited features.")
             return True
         required_tools = ['aircrack-ng', 'airodump-ng', 'aireplay-ng', 'nmap', 'iwlist']
         missing_tools = []
@@ -385,16 +385,16 @@ class ShadowNet:
             if subprocess.call(['which', tool], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) != 0:
                 missing_tools.append(tool)
         if missing_tools:
-            print(f"[!] MISSING REQUIRED TOOLS: {', '.join(missing_tools)}")
-            print("[!] INSTALL WITH: sudo apt-get install aircrack-ng nmap wireless-tools")
+            p_error(f"[!] MISSING REQUIRED TOOLS: {', '.join(missing_tools)}")
+            p_warn("[!] INSTALL WITH: sudo apt-get install aircrack-ng nmap wireless-tools")
             return False
         return True
 
     def system_setup(self):
-        print("\n[*] SYSTEM SETUP & OS DETECTION")
-        print("=" * 50)
+        p_title("\n[*] SYSTEM SETUP & OS DETECTION")
+        print(color_text("=" * 50, Fore.CYAN))
         os_info = detect_os()
-        print(f"Detected OS: {os_info.get('system')} | Distro: {os_info.get('distro_id')} | Package Manager: {os_info.get('pkg_manager')}")
+        p_info(f"Detected OS: {os_info.get('system')} | Distro: {os_info.get('distro_id')} | Package Manager: {os_info.get('pkg_manager')}")
         print("\n[1] Install/Verify Dependencies")
         print("[2] List Wireless Interfaces")
         print("[3] Enable Monitor Mode (Linux)")
@@ -407,44 +407,47 @@ class ShadowNet:
 
         if choice == "1":
             if os.geteuid() != 0 and os_info.get('system') != 'Windows':
-                print("[!] Root privileges required to install dependencies.")
+                p_warn("[!] Root privileges required to install dependencies.")
             else:
                 install_dependencies(os_info)
         elif choice == "2":
-            print("[*] Wireless interfaces (iw dev):")
-            subprocess.run(["iw", "dev"]) if os_info.get('system') == 'Linux' else print("[i] Available on Linux only")
+            p_info("[*] Wireless interfaces (iw dev):")
+            if os_info.get('system') == 'Linux':
+                subprocess.run(["iw", "dev"]) 
+            else:
+                p_info("[i] Available on Linux only")
         elif choice == "3":
             if os_info.get('system') != 'Linux':
-                print("[!] This option is for Linux only")
+                p_warn("[!] This option is for Linux only")
             else:
                 iface = input("[+] Interface (e.g., wlan0): ")
                 enable_monitor_mode_linux(iface)
         elif choice == "4":
             if os_info.get('system') != 'Linux':
-                print("[!] This option is for Linux only")
+                p_warn("[!] This option is for Linux only")
             else:
                 iface = input("[+] Interface (e.g., wlan0mon or wlan0): ")
                 disable_monitor_mode_linux(iface)
         elif choice == "5":
             if os_info.get('system') != 'Windows':
-                print("[i] This lists Windows adapters and requires PowerShell.")
+                p_info("[i] This lists Windows adapters and requires PowerShell.")
             adapters = list_windows_adapters()
             if adapters:
-                print("\nName | InterfaceDescription")
+                p_title("\nName | InterfaceDescription")
                 for a in adapters:
                     print(f"- {a.get('Name')} | {a.get('InterfaceDescription')}")
             else:
-                print("[i] No adapters found or not running on Windows.")
+                p_info("[i] No adapters found or not running on Windows.")
         elif choice == "6":
             if os_info.get('system') != 'Windows':
-                print("[!] This option is for Windows only")
+                p_warn("[!] This option is for Windows only")
             else:
                 adapter = input("[+] Adapter Name or GUID: ")
                 ch = input("[+] Channel (optional): ") or None
                 enable_monitor_mode_windows(adapter, ch)
         elif choice == "7":
             p = windows_wlanhelper_exists()
-            print(p if p else "[i] WlanHelper.exe not found. Install Npcap.")
+            p_info(p if p else "[i] WlanHelper.exe not found. Install Npcap.")
         else:
             return
     
@@ -469,39 +472,39 @@ class ShadowNet:
             print(f"[+] WORDLIST CREATED: {self.wordlist_path}")
     
     def network_recon(self):
-    p_title("\n[*] NETWORK RECONNAISSANCE MODULE")
-    print(color_text("=" * 50, Fore.CYAN))
-    target = input(prompt("[+] ENTER TARGET RANGE (192.168.1.0/24): "))
+        p_title("\n[*] NETWORK RECONNAISSANCE MODULE")
+        print(color_text("=" * 50, Fore.CYAN))
+        target = input(prompt("[+] ENTER TARGET RANGE (192.168.1.0/24): "))
         
         if not target:
             p_error("[!] NO TARGET SPECIFIED")
             return
             
-        p_info(f"[*] SCANNING {target}...")
-        cmd = f"nmap -sn {target}"
-        subprocess.run(cmd, shell=True)
+    p_info(f"[*] SCANNING {target}...")
+    cmd = f"nmap -sn {target}"
+    subprocess.run(cmd, shell=True)
         
         input("\n[PRESS ENTER TO CONTINUE]")
 
     def wireless_auto_audit(self):
-        print("\n[*] WIRELESS AUTO-AUDIT")
-        print("=" * 60)
-        print("[!] AUTHORIZED PENTESTING ONLY")
+        p_title("\n[*] WIRELESS AUTO-AUDIT")
+        print(color_text("=" * 60, Fore.CYAN))
+        p_warn("[!] AUTHORIZED PENTESTING ONLY")
         os_info = detect_os()
         if os_info.get('system') != 'Linux':
-            print("[i] This module currently supports Linux.")
+            p_info("[i] This module currently supports Linux.")
             input("\n[PRESS ENTER TO CONTINUE]")
             return
 
         tools_required = ['hcxdumptool', 'hcxpcapngtool', 'airodump-ng', 'aireplay-ng', 'aircrack-ng']
         missing = [t for t in tools_required if subprocess.call(['which', t], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) != 0]
         if missing:
-            print(f"[!] Missing tools: {', '.join(missing)}")
-            print("[!] Install via setup or package manager (apt install hcxdumptool hcxpcapngtool aircrack-ng)")
+            p_error(f"[!] Missing tools: {', '.join(missing)}")
+            p_warn("[!] Install via setup or package manager (apt install hcxdumptool hcxpcapngtool aircrack-ng)")
             input("\n[PRESS ENTER TO CONTINUE]")
             return
 
-        print("\nModes:")
+    print("\nModes:")
         print("  [1] PMKID attack (hcxdumptool)")
         print("  [2] Handshake capture (airodump+deauth)")
         print("  [3] Both (PMKID then handshake)")
@@ -521,7 +524,7 @@ class ShadowNet:
         cap_dir.mkdir(parents=True, exist_ok=True)
 
         def run_pmkid(duration=60):
-            print(f"[*] Starting PMKID capture for {duration}s on {iface_mon}...")
+            p_info(f"[*] Starting PMKID capture for {duration}s on {iface_mon}...")
             pcap_path = cap_dir / f"pmkid_{ts}.pcapng"
             try:
                 proc = subprocess.Popen(['sudo', 'hcxdumptool', '-i', iface_mon, '--enable_status=15', '-o', str(pcap_path)])
@@ -529,13 +532,13 @@ class ShadowNet:
                 proc.terminate()
             except KeyboardInterrupt:
                 proc.terminate()
-            print("[*] Converting to hash format (22000)...")
+            p_info("[*] Converting to hash format (22000)...")
             hash_path = cap_dir / f"pmkid_{ts}.22000"
             subprocess.run(['hcxpcapngtool', str(pcap_path), '-o', str(hash_path)], check=False)
             if hash_path.exists() and hash_path.stat().st_size > 0:
-                print(f"[+] PMKID hashes saved: {hash_path}")
+                p_ok(f"[+] PMKID hashes saved: {hash_path}")
             else:
-                print("[!] No PMKID hashes found.")
+                p_warn("[!] No PMKID hashes found.")
             return str(pcap_path), str(hash_path)
 
         def run_handshake(bssid=None, channel=None, deauth=True, duration=90):
@@ -546,12 +549,12 @@ class ShadowNet:
             if bssid:
                 airodump_cmd += ['--bssid', bssid]
             airodump_cmd += ['-w', str(prefix), iface_mon]
-            print(f"[*] Starting airodump-ng, writing to {prefix}-01.cap ...")
+            p_info(f"[*] Starting airodump-ng, writing to {prefix}-01.cap ...")
             dump_proc = subprocess.Popen(airodump_cmd)
             deauth_proc = None
             try:
                 if deauth and bssid:
-                    print("[*] Sending periodic deauth to accelerate handshake capture...")
+                    p_info("[*] Sending periodic deauth to accelerate handshake capture...")
                     deauth_proc = subprocess.Popen(['sudo', 'aireplay-ng', '-0', '10', '-a', bssid, iface_mon])
                 time.sleep(int(duration))
             except KeyboardInterrupt:
@@ -563,13 +566,13 @@ class ShadowNet:
                     dump_proc.terminate()
             cap_file = f"{prefix}-01.cap"
             if Path(cap_file).exists():
-                print(f"[+] Capture saved: {cap_file}")
+                p_ok(f"[+] Capture saved: {cap_file}")
                 wl = input("[?] Wordlist path to try with aircrack-ng (ENTER to skip): ")
                 if wl:
-                    print("[*] Attempting crack with aircrack-ng...")
+                    p_info("[*] Attempting crack with aircrack-ng...")
                     subprocess.run(['aircrack-ng', '-w', wl, cap_file])
             else:
-                print("[!] Handshake file not found. Try increasing duration or deauth.")
+                p_warn("[!] Handshake file not found. Try increasing duration or deauth.")
             return cap_file
 
         if mode == '1':
@@ -590,12 +593,12 @@ class ShadowNet:
             dur2 = input("[+] Handshake duration (90): ") or '90'
             run_handshake(bssid=bssid, channel=channel, deauth=deauth, duration=dur2)
         else:
-            print("[!] Invalid selection")
+            p_error("[!] Invalid selection")
         input("\n[PRESS ENTER TO CONTINUE]")
     
     def hidden_ssid_discovery(self):
-    p_title("\n[*] HIDDEN SSID DISCOVERY MODULE")
-    print(color_text("=" * 50, Fore.CYAN))
+        p_title("\n[*] HIDDEN SSID DISCOVERY MODULE")
+        print(color_text("=" * 50, Fore.CYAN))
         
         if not hasattr(self, 'scanner') or self.scanner is None:
             self.scanner = HiddenNetworkScanner(timeout=60, passive_scan=True, use_scapy=True)
@@ -609,8 +612,8 @@ class ShadowNet:
         input("\n[PRESS ENTER TO CONTINUE]")
     
     def access_point_analysis(self):
-    p_title("\n[*] ACCESS POINT ANALYSIS MODULE")
-    print(color_text("=" * 50, Fore.CYAN))
+        p_title("\n[*] ACCESS POINT ANALYSIS MODULE")
+        print(color_text("=" * 50, Fore.CYAN))
         print("[1] LIST WIRELESS INTERFACES")
         print("[2] ENABLE MONITOR MODE")
         print("[3] SCAN ACCESS POINTS")
@@ -632,7 +635,7 @@ class ShadowNet:
                 p_warn("[!] Monitor mode not supported on this OS from here.")
         elif choice == "3":
             interface = input("[+] MONITOR INTERFACE (wlan0mon): ")
-            print(f"[*] SCANNING ACCESS POINTS ON {interface}...")
+            p_info(f"[*] SCANNING ACCESS POINTS ON {interface}...")
             subprocess.run(f"sudo airodump-ng {interface}", shell=True)
         elif choice == "4":
             interface = input("[+] INTERFACE: ")
@@ -650,9 +653,9 @@ class ShadowNet:
         input("\n[PRESS ENTER TO CONTINUE]")
     
     def deauth_operations(self):
-    p_title("\n[*] DEAUTH OPERATIONS MODULE")
-    print(color_text("=" * 50, Fore.CYAN))
-    p_warn("[!] WARNING: FOR AUTHORIZED TESTING ONLY")
+        p_title("\n[*] DEAUTH OPERATIONS MODULE")
+        print(color_text("=" * 50, Fore.CYAN))
+        p_warn("[!] WARNING: FOR AUTHORIZED TESTING ONLY")
         
         confirm = input("[+] CONFIRM AUTHORIZATION (YES/NO): ")
         if confirm.upper() != "YES":
@@ -674,8 +677,8 @@ class ShadowNet:
         input("\n[PRESS ENTER TO CONTINUE]")
     
     def wireless_bruteforce(self):
-    p_title("\n[*] WIRELESS BRUTEFORCE MODULE")
-    print(color_text("=" * 50, Fore.CYAN))
+        p_title("\n[*] WIRELESS BRUTEFORCE MODULE")
+        print(color_text("=" * 50, Fore.CYAN))
         
         print("[1] USE DEFAULT WORDLIST")
         print("[2] SPECIFY CUSTOM WORDLIST")
@@ -709,8 +712,8 @@ class ShadowNet:
         input("\n[PRESS ENTER TO CONTINUE]")
     
     def handshake_capture(self):
-    p_title("\n[*] HANDSHAKE CAPTURE MODULE")
-    print(color_text("=" * 50, Fore.CYAN))
+        p_title("\n[*] HANDSHAKE CAPTURE MODULE")
+        print(color_text("=" * 50, Fore.CYAN))
         
         interface = input("[+] MONITOR INTERFACE: ")
         target_bssid = input("[+] TARGET BSSID: ")
@@ -729,8 +732,8 @@ class ShadowNet:
         input("\n[PRESS ENTER TO CONTINUE]")
     
     def dictionary_attack(self):
-    p_title("\n[*] DICTIONARY ATTACK MODULE")
-    print(color_text("=" * 50, Fore.CYAN))
+        p_title("\n[*] DICTIONARY ATTACK MODULE")
+        print(color_text("=" * 50, Fore.CYAN))
         
         print("[1] USE DEFAULT WORDLIST")
         print("[2] SPECIFY CUSTOM WORDLIST")
@@ -767,8 +770,8 @@ class ShadowNet:
         input("\n[PRESS ENTER TO CONTINUE]")
     
     def generate_custom_wordlist(self):
-    p_title("\n[*] WORDLIST GENERATOR")
-    print(color_text("=" * 30, Fore.CYAN))
+        p_title("\n[*] WORDLIST GENERATOR")
+        print(color_text("=" * 30, Fore.CYAN))
         
         base_words = input("[+] BASE WORDS (comma separated): ").split(',')
         min_length = int(input("[+] MIN LENGTH (8): ") or "8")
@@ -805,8 +808,8 @@ class ShadowNet:
     p_ok(f"[+] GENERATED {len(set(filtered_wordlist))} PASSWORDS")
     
     def wordlist_management(self):
-    p_title("\n[*] WORDLIST MANAGEMENT MODULE")
-    print(color_text("=" * 50, Fore.CYAN))
+        p_title("\n[*] WORDLIST MANAGEMENT MODULE")
+        print(color_text("=" * 50, Fore.CYAN))
         print("[1] VIEW DEFAULT WORDLIST")
         print("[2] CREATE CUSTOM WORDLIST")
         print("[3] MERGE WORDLISTS")
@@ -1001,8 +1004,8 @@ class ShadowNet:
             p_error(f"[!] ERROR ANALYZING WORDLIST: {e}")
     
     def download_wordlists(self):
-    p_title("\n[*] WORDLIST DOWNLOADER")
-    print(color_text("=" * 25, Fore.CYAN))
+        p_title("\n[*] WORDLIST DOWNLOADER")
+        print(color_text("=" * 25, Fore.CYAN))
         print("[1] ROCKYOU.TXT")
         print("[2] COMMON PASSWORDS")
         print("[3] WIFI PASSWORDS")
@@ -1034,8 +1037,8 @@ class ShadowNet:
             p_error(f"[!] DOWNLOAD FAILED: {e}")
     
     def file_operations(self):
-    p_title("\n[*] FILE OPERATIONS MODULE")
-    print(color_text("=" * 50, Fore.CYAN))
+        p_title("\n[*] FILE OPERATIONS MODULE")
+        print(color_text("=" * 50, Fore.CYAN))
         print("[1] LIST CAPTURE FILES")
         print("[2] ANALYZE HANDSHAKE")
         print("[3] FILE CONVERTER")
@@ -1055,8 +1058,8 @@ class ShadowNet:
         input("\n[PRESS ENTER TO CONTINUE]")
     
     def list_capture_files(self):
-    p_title("\n[*] CAPTURE FILES")
-    print(color_text("=" * 20, Fore.CYAN))
+        p_title("\n[*] CAPTURE FILES")
+        print(color_text("=" * 20, Fore.CYAN))
         
         cap_files = list(Path(".").glob("*.cap")) + list(Path(".").glob("*.pcap"))
         
@@ -1081,8 +1084,8 @@ class ShadowNet:
         subprocess.run(cmd, shell=True)
     
     def file_converter(self):
-    p_title("\n[*] FILE CONVERTER")
-    print(color_text("=" * 20, Fore.CYAN))
+        p_title("\n[*] FILE CONVERTER")
+        print(color_text("=" * 20, Fore.CYAN))
         print("[1] CAP TO HCCAPX")
         print("[2] PCAP TO CAP")
         
@@ -1109,7 +1112,7 @@ class ShadowNet:
                 p_error("[!] INPUT FILE NOT FOUND")
     
     def clean_temp_files(self):
-    p_title("\n[*] CLEANING TEMPORARY FILES...")
+        p_title("\n[*] CLEANING TEMPORARY FILES...")
         
         temp_patterns = ["*.tmp", "*.temp", "*-01.cap", "*-01.csv", "*-01.kismet.csv"]
         cleaned = 0
@@ -1119,13 +1122,13 @@ class ShadowNet:
             for file in files:
                 file.unlink()
                 cleaned += 1
-        p_ok(f"[+] DELETED: {file.name}")
+                p_ok(f"[+] DELETED: {file.name}")
         
-    p_ok(f"[+] CLEANED {cleaned} TEMPORARY FILES")
+        p_ok(f"[+] CLEANED {cleaned} TEMPORARY FILES")
     
     def system_infiltration(self):
-    p_title("\n[*] SYSTEM INFILTRATION MODULE")
-    print(color_text("=" * 50, Fore.CYAN))
+        p_title("\n[*] SYSTEM INFILTRATION MODULE")
+        print(color_text("=" * 50, Fore.CYAN))
         print("[1] PORT SCAN")
         print("[2] SERVICE ENUMERATION")
         print("[3] VULNERABILITY SCAN")
@@ -1187,11 +1190,11 @@ class ShadowNet:
             elif choice == "11" or choice == "11":
                 self.wireless_auto_audit()
             elif choice == "99":
-                print("\n[*] SHADOWNET TERMINATED")
-                print("[*] OUT")
+                p_title("\n[*] SHADOWNET TERMINATED")
+                p_info("[*] OUT")
                 break
             else:
-                print("\n[!] INVALID SELECTION")
+                p_error("\n[!] INVALID SELECTION")
                 time.sleep(1)
 
 
