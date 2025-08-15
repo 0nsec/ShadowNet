@@ -1,11 +1,10 @@
-# Hidden Networks Scanner Requirements
-# Enhanced with Scapy for advanced 802.11 frame analysis
+# ShadowNet Requirements
+# Enhanced with Scapy for advanced 802.11 frame analysis and cross-platform helpers
 
 # Python packages
 scapy>=2.4.5
 netifaces>=0.11.0
 colorama>=0.4.4
-argparse
 
 # System dependencies (install via package manager):
 # - wireless-tools
@@ -13,6 +12,7 @@ argparse
 # - network-manager
 # - tcpdump
 # - aircrack-ng (optional, for advanced features)
+# - On Windows: Npcap with raw 802.11 support (WlanHelper.exe)
 
 # Python version requirement:
-# python>=3.6
+# python>=3.8
