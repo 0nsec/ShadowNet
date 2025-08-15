@@ -460,7 +460,7 @@ class ShadowNet:
         input("\n[PRESS ENTER TO CONTINUE]")
 
     def wireless_auto_audit(self):
-        print("\n[*] WIRELESS AUTO-AUDIT (WIFITE-LIKE)")
+        print("\n[*] WIRELESS AUTO-AUDIT")
         print("=" * 60)
         print("[!] AUTHORIZED PENTESTING ONLY")
         os_info = detect_os()
