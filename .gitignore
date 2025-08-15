@@ -127,7 +127,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-.gitignore
+# do not ignore .gitignore itself
 # Spyder project settings
 .spyderproject
 .spyproject
@@ -274,6 +274,7 @@ output/
 results/
 scans/
 captures/
+reports/
 
 # Test files
 test_output/
@@ -295,4 +296,6 @@ docs/_build/
 venv/
 .venv/
 env/
-.env/
+.env
+.env.local
+.python-version
