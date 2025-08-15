@@ -12,6 +12,245 @@ from collections import defaultdict
 from datetime import datetime
 import os
 from pathlib import Path
+import platform
+import ctypes
+
+def detect_os():
+    """Detect operating system and package manager.
+    Returns dict with keys: system (Linux/Windows/Darwin), distro_id, pkg_manager.
+    """
+    system = platform.system()
+    info = {"system": system, "distro_id": None, "pkg_manager": None}
+    if system == "Linux":
+        # Try /etc/os-release
+        distro_id = None
+        try:
+            with open("/etc/os-release", "r") as f:
+                data = f.read()
+            for line in data.splitlines():
+                if line.startswith("ID="):
+                    distro_id = line.split("=", 1)[1].strip().strip('"').lower()
+                    break
+        except Exception:
+            pass
+        info["distro_id"] = distro_id
+
+        # Determine package manager
+        def _has(cmd):
+            return subprocess.call(["which", cmd], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0
+
+        if _has("apt"): info["pkg_manager"] = "apt"
+        elif _has("dnf"): info["pkg_manager"] = "dnf"
+        elif _has("yum"): info["pkg_manager"] = "yum"
+        elif _has("pacman"): info["pkg_manager"] = "pacman"
+        else: info["pkg_manager"] = None
+    elif system == "Windows":
+        info["distro_id"] = "windows"
+        info["pkg_manager"] = None
+    elif system == "Darwin":
+        info["distro_id"] = "macos"
+        # Homebrew if present
+        try:
+            if subprocess.call(["which", "brew"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0:
+                info["pkg_manager"] = "brew"
+        except Exception:
+            pass
+    return info
+
+def is_root():
+    """Return True if running with elevated privileges.
+    Linux/macOS: euid == 0. Windows: IsUserAnAdmin().
+    """
+    try:
+        return os.geteuid() == 0
+    except AttributeError:
+        # Windows
+        try:
+            return bool(ctypes.windll.shell32.IsUserAnAdmin())
+        except Exception:
+            return False
+
+def enable_monitor_mode_linux(interface: str):
+    """Enable monitor mode on Linux via airmon-ng if available, otherwise iw/ip.
+    Returns True on success."""
+    if not interface:
+        print("[!] No interface specified")
+        return False
+    has_airmon = subprocess.call(["which", "airmon-ng"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0
+    try:
+        if has_airmon:
+            print(f"[*] Enabling monitor mode using airmon-ng on {interface}...")
+            res = subprocess.run(["sudo", "airmon-ng", "start", interface], check=False)
+            return res.returncode == 0
+        else:
+            print(f"[*] Enabling monitor mode using iw/ip on {interface}...")
+            subprocess.run(["sudo", "ip", "link", "set", interface, "down"], check=True)
+            subprocess.run(["sudo", "iw", interface, "set", "type", "monitor"], check=True)
+            subprocess.run(["sudo", "ip", "link", "set", interface, "up"], check=True)
+            return True
+    except subprocess.CalledProcessError as e:
+        print(f"[!] Failed to enable monitor mode: {e}")
+        return False
+
+def disable_monitor_mode_linux(interface: str):
+    """Disable monitor mode (restore managed) on Linux."""
+    if not interface:
+        print("[!] No interface specified")
+        return False
+    has_airmon = subprocess.call(["which", "airmon-ng"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0
+    try:
+        if has_airmon:
+            print(f"[*] Disabling monitor mode using airmon-ng on {interface}...")
+            res = subprocess.run(["sudo", "airmon-ng", "stop", interface], check=False)
+            return res.returncode == 0
+        else:
+            print(f"[*] Restoring managed mode on {interface}...")
+            subprocess.run(["sudo", "ip", "link", "set", interface, "down"], check=True)
+            subprocess.run(["sudo", "iw", interface, "set", "type", "managed"], check=True)
+            subprocess.run(["sudo", "ip", "link", "set", interface, "up"], check=True)
+            return True
+    except subprocess.CalledProcessError as e:
+        print(f"[!] Failed to disable monitor mode: {e}")
+        return False
+
+def _find_wlanhelper_paths():
+    """Return possible WlanHelper.exe paths on Windows."""
+    return [
+        r"C:\\Windows\\System32\\Npcap\\WlanHelper.exe",
+        r"C:\\Program Files\\Npcap\\WlanHelper.exe",
+        r"C:\\Program Files\\Npcap\\WlanHelper\\WlanHelper.exe",
+        r"C:\\Program Files (x86)\\Npcap\\WlanHelper.exe",
+        r"C:\\Program Files (x86)\\Npcap\\WlanHelper\\WlanHelper.exe",
+    ]
+
+def windows_wlanhelper_exists():
+    if platform.system() != "Windows":
+        return None
+    for p in _find_wlanhelper_paths():
+        if os.path.exists(p):
+            return p
+    return None
+
+def enable_monitor_mode_windows(adapter_name_or_guid: str, channel: str = None):
+    """Attempt to enable monitor mode on Windows using Npcap's WlanHelper.
+    Returns True/False. Requires Npcap installed with raw 802.11 support.
+    """
+    exe = windows_wlanhelper_exists()
+    if not exe:
+        print("[!] Npcap WlanHelper.exe not found. Install Npcap with 'Support raw 802.11 traffic (and monitor mode)'.")
+        print("    Download: https://npcap.com/#download")
+        return False
+    if not adapter_name_or_guid:
+        print("[!] No adapter specified. Use 'List Windows adapters' to find the name or GUID.")
+        return False
+    try:
+        print(f"[*] Enabling monitor mode on {adapter_name_or_guid} via WlanHelper...")
+        res1 = subprocess.run([exe, adapter_name_or_guid, "mode", "monitor"], capture_output=True, text=True)
+        if res1.returncode != 0:
+            print(res1.stdout.strip())
+            print(res1.stderr.strip())
+            print("[!] WlanHelper failed to set monitor mode.")
+            return False
+        if channel:
+            subprocess.run([exe, adapter_name_or_guid, "channel", str(channel)], check=False)
+        print("[+] Monitor mode enabled (Windows)")
+        print("    Note: Not all adapters/drivers support monitor mode on Windows.")
+        return True
+    except Exception as e:
+        print(f"[!] Failed to enable monitor mode (Windows): {e}")
+        return False
+
+def list_windows_adapters():
+    """List Windows network adapters via PowerShell. Returns list of dicts with Name, InterfaceDescription, ifIndex/Guid if available."""
+    try:
+        cmd = [
+            "powershell",
+            "-NoProfile",
+            "-Command",
+            "Get-NetAdapter | Select-Object -Property Name, InterfaceDescription, Status, MacAddress, ifIndex | Format-Table -HideTableHeaders"
+        ]
+        res = subprocess.run(cmd, capture_output=True, text=True)
+        if res.returncode != 0:
+            print("[!] Failed to list adapters via PowerShell")
+            return []
+        adapters = []
+        for line in res.stdout.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            # Rough parse: columns may be spaced; we capture name and description heuristically
+            parts = re.split(r"\s{2,}", line)
+            if len(parts) >= 2:
+                adapters.append({"Name": parts[0], "InterfaceDescription": parts[1]})
+        return adapters
+    except Exception as e:
+        print(f"[!] Error listing Windows adapters: {e}")
+        return []
+
+def install_dependencies(os_info):
+    """Install required system packages based on OS. Returns True/False.
+    Only performs automatic install on Linux/macOS when root and package manager is known.
+    """
+    system = os_info.get("system")
+    if system == "Linux":
+        pm = os_info.get("pkg_manager")
+        if not pm:
+            print("[!] Unknown Linux package manager. Please install dependencies manually: wireless-tools iw network-manager tcpdump aircrack-ng nmap")
+            return False
+        cmds = []
+        if pm == "apt":
+            cmds = [
+                ["apt", "update", "-y"],
+                ["apt", "install", "-y", "wireless-tools", "iw", "network-manager", "tcpdump", "aircrack-ng", "nmap", "net-tools"],
+            ]
+        elif pm == "dnf":
+            cmds = [
+                ["dnf", "install", "-y", "wireless-tools", "iw", "NetworkManager", "tcpdump", "aircrack-ng", "nmap", "net-tools"],
+            ]
+        elif pm == "yum":
+            cmds = [
+                ["yum", "install", "-y", "wireless-tools", "iw", "NetworkManager", "tcpdump", "aircrack-ng", "nmap", "net-tools"],
+            ]
+        elif pm == "pacman":
+            cmds = [
+                ["pacman", "-Sy", "--noconfirm"],
+                ["pacman", "-S", "--noconfirm", "wireless_tools", "iw", "networkmanager", "tcpdump", "aircrack-ng", "nmap", "net-tools"],
+            ]
+        success = True
+        for c in cmds:
+            print("[*] Executing:", " ".join(c))
+            rc = subprocess.call(["sudo"] + c)
+            if rc != 0:
+                success = False
+                break
+        if success:
+            print("[+] System dependencies installed")
+        return success
+    elif system == "Darwin":
+        if os_info.get("pkg_manager") != "brew":
+            print("[!] Homebrew not found. Install Homebrew (https://brew.sh) or install deps manually.")
+            return False
+        cmds = [
+            ["brew", "update"],
+            ["brew", "install", "aircrack-ng", "nmap", "tcpdump"],
+        ]
+        success = True
+        for c in cmds:
+            print("[*] Executing:", " ".join(c))
+            rc = subprocess.call(c)
+            if rc != 0:
+                success = False
+                break
+        return success
+    elif system == "Windows":
+        print("[i] On Windows, install the following manually:")
+        print("    - Npcap (enable 'Support raw 802.11 traffic (and monitor mode)') https://npcap.com/")
+        print("    - Wireshark (optional) https://www.wireshark.org/")
+        print("    - aircrack-ng for Windows (optional) https://www.aircrack-ng.org/")
+        return True
+    else:
+        print(f"[!] Unsupported OS: {system}")
+        return False
 
 try:
     from colorama import init, Fore, Style
@@ -82,6 +321,7 @@ class ShadowNet:
         self.banner = """
 ╔══════════════════════════════════════════════════════════════════════════╗
 ║                             SHADOWNET v2.0                               ║
+║  [00] SYSTEM SETUP & OS DETECTION                                        ║
 ║  [01] NETWORK RECONNAISSANCE      [05] WIRELESS BRUTEFORCE               ║
 ║  [02] HIDDEN SSID DISCOVERY       [06] HANDSHAKE CAPTURE                 ║
 ║  [03] ACCESS POINT ANALYSIS       [07] DICTIONARY ATTACK                 ║
@@ -109,18 +349,79 @@ class ShadowNet:
             print("=" * 78)
         
     def check_dependencies(self):
+        os_info = detect_os()
+        if os_info.get('system') == 'Windows':
+            print("[i] Running on Windows: some modules require Linux tools (iwlist/airodump-ng).")
+            print("[i] You can still use System Setup to enable monitor mode via Npcap and use limited features.")
+            return True
         required_tools = ['aircrack-ng', 'airodump-ng', 'aireplay-ng', 'nmap', 'iwlist']
         missing_tools = []
-        
         for tool in required_tools:
             if subprocess.call(['which', tool], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) != 0:
                 missing_tools.append(tool)
-        
         if missing_tools:
             print(f"[!] MISSING REQUIRED TOOLS: {', '.join(missing_tools)}")
             print("[!] INSTALL WITH: sudo apt-get install aircrack-ng nmap wireless-tools")
             return False
         return True
+
+    def system_setup(self):
+        print("\n[*] SYSTEM SETUP & OS DETECTION")
+        print("=" * 50)
+        os_info = detect_os()
+        print(f"Detected OS: {os_info.get('system')} | Distro: {os_info.get('distro_id')} | Package Manager: {os_info.get('pkg_manager')}")
+        print("\n[1] Install/Verify Dependencies")
+        print("[2] List Wireless Interfaces")
+        print("[3] Enable Monitor Mode (Linux)")
+        print("[4] Disable Monitor Mode (Linux)")
+        print("[5] List Windows Adapters (PowerShell)")
+        print("[6] Enable Monitor Mode (Windows - Npcap)")
+        print("[7] Show Npcap WlanHelper Path (Windows)")
+        print("[0] Back")
+        choice = input("[+] SELECT OPTION: ")
+
+        if choice == "1":
+            if os.geteuid() != 0 and os_info.get('system') != 'Windows':
+                print("[!] Root privileges required to install dependencies.")
+            else:
+                install_dependencies(os_info)
+        elif choice == "2":
+            print("[*] Wireless interfaces (iw dev):")
+            subprocess.run(["iw", "dev"]) if os_info.get('system') == 'Linux' else print("[i] Available on Linux only")
+        elif choice == "3":
+            if os_info.get('system') != 'Linux':
+                print("[!] This option is for Linux only")
+            else:
+                iface = input("[+] Interface (e.g., wlan0): ")
+                enable_monitor_mode_linux(iface)
+        elif choice == "4":
+            if os_info.get('system') != 'Linux':
+                print("[!] This option is for Linux only")
+            else:
+                iface = input("[+] Interface (e.g., wlan0mon or wlan0): ")
+                disable_monitor_mode_linux(iface)
+        elif choice == "5":
+            if os_info.get('system') != 'Windows':
+                print("[i] This lists Windows adapters and requires PowerShell.")
+            adapters = list_windows_adapters()
+            if adapters:
+                print("\nName | InterfaceDescription")
+                for a in adapters:
+                    print(f"- {a.get('Name')} | {a.get('InterfaceDescription')}")
+            else:
+                print("[i] No adapters found or not running on Windows.")
+        elif choice == "6":
+            if os_info.get('system') != 'Windows':
+                print("[!] This option is for Windows only")
+            else:
+                adapter = input("[+] Adapter Name or GUID: ")
+                ch = input("[+] Channel (optional): ") or None
+                enable_monitor_mode_windows(adapter, ch)
+        elif choice == "7":
+            p = windows_wlanhelper_exists()
+            print(p if p else "[i] WlanHelper.exe not found. Install Npcap.")
+        else:
+            return
     
     def create_wordlist(self):
         if not Path(self.wordlist_path).exists():
@@ -179,6 +480,7 @@ class ShadowNet:
         print("[2] ENABLE MONITOR MODE")
         print("[3] SCAN ACCESS POINTS")
         print("[4] DETAILED NETWORK INFO")
+        print("[5] DISABLE MONITOR MODE")
         
         choice = input("[+] SELECT OPTION: ")
         
@@ -186,8 +488,13 @@ class ShadowNet:
             subprocess.run("iwconfig", shell=True)
         elif choice == "2":
             interface = input("[+] INTERFACE (wlan0): ")
-            print(f"[*] ENABLING MONITOR MODE ON {interface}...")
-            subprocess.run(f"sudo airmon-ng start {interface}", shell=True)
+            os_info = detect_os()
+            if os_info.get('system') == 'Linux':
+                enable_monitor_mode_linux(interface)
+            elif os_info.get('system') == 'Windows':
+                print("[i] Use 'System Setup' menu for Windows monitor mode via Npcap.")
+            else:
+                print("[!] Monitor mode not supported on this OS from here.")
         elif choice == "3":
             interface = input("[+] MONITOR INTERFACE (wlan0mon): ")
             print(f"[*] SCANNING ACCESS POINTS ON {interface}...")
@@ -195,6 +502,15 @@ class ShadowNet:
         elif choice == "4":
             interface = input("[+] INTERFACE: ")
             subprocess.run(f"sudo iwlist {interface} scan", shell=True)
+        elif choice == "5":
+            interface = input("[+] INTERFACE (wlan0mon/wlan0): ")
+            os_info = detect_os()
+            if os_info.get('system') == 'Linux':
+                disable_monitor_mode_linux(interface)
+            elif os_info.get('system') == 'Windows':
+                print("[i] Use Npcap WlanHelper to restore mode: WlanHelper.exe <adapter> mode managed")
+            else:
+                print("[!] Not supported on this OS.")
         
         input("\n[PRESS ENTER TO CONTINUE]")
     
@@ -711,6 +1027,8 @@ class ShadowNet:
             
             choice = input("\n[+] SELECT MODULE: ")
             
+            if choice == "00" or choice == "0":
+                self.system_setup()
             if choice == "01" or choice == "1":
                 self.network_recon()
             elif choice == "02" or choice == "2":
@@ -1400,8 +1718,8 @@ def main():
     
     args = parser.parse_args()
     
-    if os.geteuid() != 0:
-        print("This tool requires root privileges. Please run with sudo.")
+    if not is_root():
+        print("This tool requires elevated privileges. On Linux/macOS use sudo; on Windows run as Administrator.")
         sys.exit(1)
 
     if args.enable_deauth:
@@ -1457,9 +1775,9 @@ if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "--legacy":
         main()
     else:
-        if os.geteuid() != 0:
-            print("SHADOWNET REQUIRES ROOT PRIVILEGES")
-            print("RUN WITH: sudo python3 scan.py")
+        if not is_root():
+            print("SHADOWNET REQUIRES ELEVATED PRIVILEGES")
+            print("RUN WITH: sudo python3 scan.py (Linux/macOS) or as Administrator (Windows)")
             sys.exit(1)
         run_shadownet()
 

@@ -15,6 +15,11 @@
 
 SHADOWNET is an advanced network security testing toolkit designed for authorized penetration testing and security research.
 
+New in this version:
+- OS detection and guided dependency installation (Linux/macOS; guidance for Windows)
+- Built-in helpers to enable/disable monitor mode on Linux
+- Windows monitor mode support via Npcap WlanHelper (where supported by adapter)
+
 
 
 ## CORE MODULES
@@ -96,9 +101,22 @@ sudo python3 scan.py
 sudo python3 scan.py --legacy
 ```
 
+### System Setup and Monitor Mode
+
+- Use menu [00] System Setup & OS Detection to:
+  - Detect OS and package manager
+  - Install/verify dependencies (Linux/macOS)
+  - Enable/disable monitor mode on Linux
+  - List Windows adapters and enable monitor mode via Npcap WlanHelper
+
+Windows notes:
+- Install Npcap with "Support raw 802.11 traffic (and monitor mode)"
+- Use WlanHelper.exe to toggle monitor mode: `WlanHelper.exe <adapter> mode monitor`
+- Not all adapters/drivers support monitor mode on Windows.
+
 ## REQUIREMENTS
 
-- Linux operating system
+- Linux or Windows (limited features on Windows)
 - Root privileges
 - aircrack-ng suite
 - nmap
@@ -106,6 +124,7 @@ sudo python3 scan.py --legacy
 - Python 3.x
 - scapy
 - netifaces
+ - On Windows: Npcap with raw 802.11 support (for monitor mode)
 
 ## WORDLIST SUPPORT
 
