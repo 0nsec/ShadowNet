@@ -327,7 +327,7 @@ class ShadowNet:
 ║  [03] ACCESS POINT ANALYSIS       [07] DICTIONARY ATTACK                 ║
 ║  [04] DEAUTH OPERATIONS           [08] SYSTEM INFILTRATION               ║
 ║  [09] WORDLIST MANAGEMENT         [10] FILE OPERATIONS                   ║
-║  [11] WIRELESS AUTO-AUDIT (WIFITE-LIKE)                                  ║
+║  [11] WIRELESS AUTO-AUDIT                                                ║
 ║                                                                          ║
 ║  [99] EXIT SHADOWNET                                                     ║
 ║                                                                          ║
