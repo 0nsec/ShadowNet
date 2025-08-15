@@ -33,17 +33,17 @@ install_linux_deps() {
     case "$pm" in
         apt)
             apt update -y
-            apt install -y wireless-tools iw network-manager tcpdump aircrack-ng nmap net-tools python3 python3-pip python3-venv
+        apt install -y wireless-tools iw network-manager tcpdump aircrack-ng nmap net-tools python3 python3-pip python3-venv hcxdumptool hcxpcapngtool reaver bully hashcat
             ;;
         dnf)
-            dnf install -y wireless-tools iw NetworkManager tcpdump aircrack-ng nmap net-tools python3 python3-pip
+        dnf install -y wireless-tools iw NetworkManager tcpdump aircrack-ng nmap net-tools python3 python3-pip hcxdumptool hcxpcapngtool reaver hashcat
             ;;
         yum)
-            yum install -y wireless-tools iw NetworkManager tcpdump aircrack-ng nmap net-tools python3 python3-pip
+        yum install -y wireless-tools iw NetworkManager tcpdump aircrack-ng nmap net-tools python3 python3-pip hcxdumptool hcxpcapngtool reaver hashcat
             ;;
         pacman)
             pacman -Sy --noconfirm
-            pacman -S --noconfirm wireless_tools iw networkmanager tcpdump aircrack-ng nmap net-tools python python-pip
+        pacman -S --noconfirm wireless_tools iw networkmanager tcpdump aircrack-ng nmap net-tools python python-pip hcxdumptool reaver hashcat
             ;;
         *)
             echo "[!] Unsupported or unknown Linux package manager. Install deps manually: wireless-tools iw network-manager tcpdump aircrack-ng nmap"

@@ -78,6 +78,12 @@ New in this version:
 - Format conversion  
 - Handshake verification  
 
+### 11 - WIRELESS AUTO-AUDIT (WIFITE-LIKE)
+- PMKID capture via hcxdumptool
+- Handshake capture via airodump-ng with optional deauth
+- Automated conversion to 22000 hash format
+- Optional cracking with aircrack-ng/wordlist
+
 </details>
 
 ## INSTALLATION
@@ -121,6 +127,9 @@ Windows notes:
 - aircrack-ng suite
 - nmap
 - wireless-tools
+- hcxdumptool, hcxpcapngtool (for PMKID workflow)
+- reaver/bully (optional, WPS)
+- hashcat (optional)
 - Python 3.x
 - scapy
 - netifaces
