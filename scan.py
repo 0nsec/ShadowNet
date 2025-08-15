@@ -259,6 +259,30 @@ try:
 except ImportError:
     COLORAMA_AVAILABLE = False
 
+# Simple color helpers for consistent UI
+def color_text(text, color=None, bright=False):
+    if not COLORAMA_AVAILABLE or color is None:
+        return text
+    return (Style.BRIGHT + color + text) if bright else (color + text)
+
+def p_title(text):
+    print(color_text(text, Fore.CYAN, bright=True))
+
+def p_info(text):
+    print(color_text(text, Fore.WHITE))
+
+def p_warn(text):
+    print(color_text(text, Fore.YELLOW, bright=True))
+
+def p_error(text):
+    print(color_text(text, Fore.RED, bright=True))
+
+def p_ok(text):
+    print(color_text(text, Fore.GREEN))
+
+def prompt(text):
+    return color_text(text, Fore.YELLOW, bright=True)
+
 try:
     from scapy.all import *
     from scapy.layers.dot11 import *
@@ -445,15 +469,15 @@ class ShadowNet:
             print(f"[+] WORDLIST CREATED: {self.wordlist_path}")
     
     def network_recon(self):
-        print("\n[*] NETWORK RECONNAISSANCE MODULE")
-        print("=" * 50)
-        target = input("[+] ENTER TARGET RANGE (192.168.1.0/24): ")
+    p_title("\n[*] NETWORK RECONNAISSANCE MODULE")
+    print(color_text("=" * 50, Fore.CYAN))
+    target = input(prompt("[+] ENTER TARGET RANGE (192.168.1.0/24): "))
         
         if not target:
-            print("[!] NO TARGET SPECIFIED")
+            p_error("[!] NO TARGET SPECIFIED")
             return
             
-        print(f"[*] SCANNING {target}...")
+        p_info(f"[*] SCANNING {target}...")
         cmd = f"nmap -sn {target}"
         subprocess.run(cmd, shell=True)
         
@@ -570,8 +594,8 @@ class ShadowNet:
         input("\n[PRESS ENTER TO CONTINUE]")
     
     def hidden_ssid_discovery(self):
-        print("\n[*] HIDDEN SSID DISCOVERY MODULE")
-        print("=" * 50)
+    p_title("\n[*] HIDDEN SSID DISCOVERY MODULE")
+    print(color_text("=" * 50, Fore.CYAN))
         
         if not hasattr(self, 'scanner') or self.scanner is None:
             self.scanner = HiddenNetworkScanner(timeout=60, passive_scan=True, use_scapy=True)
@@ -580,13 +604,13 @@ class ShadowNet:
             networks = self.scanner.scan_networks()
             self.scanner.display_results(networks)
         except Exception as e:
-            print(f"[!] SCAN ERROR: {e}")
+            p_error(f"[!] SCAN ERROR: {e}")
         
         input("\n[PRESS ENTER TO CONTINUE]")
     
     def access_point_analysis(self):
-        print("\n[*] ACCESS POINT ANALYSIS MODULE")
-        print("=" * 50)
+    p_title("\n[*] ACCESS POINT ANALYSIS MODULE")
+    print(color_text("=" * 50, Fore.CYAN))
         print("[1] LIST WIRELESS INTERFACES")
         print("[2] ENABLE MONITOR MODE")
         print("[3] SCAN ACCESS POINTS")
@@ -603,9 +627,9 @@ class ShadowNet:
             if os_info.get('system') == 'Linux':
                 enable_monitor_mode_linux(interface)
             elif os_info.get('system') == 'Windows':
-                print("[i] Use 'System Setup' menu for Windows monitor mode via Npcap.")
+                p_info("[i] Use 'System Setup' menu for Windows monitor mode via Npcap.")
             else:
-                print("[!] Monitor mode not supported on this OS from here.")
+                p_warn("[!] Monitor mode not supported on this OS from here.")
         elif choice == "3":
             interface = input("[+] MONITOR INTERFACE (wlan0mon): ")
             print(f"[*] SCANNING ACCESS POINTS ON {interface}...")
@@ -619,20 +643,20 @@ class ShadowNet:
             if os_info.get('system') == 'Linux':
                 disable_monitor_mode_linux(interface)
             elif os_info.get('system') == 'Windows':
-                print("[i] Use Npcap WlanHelper to restore mode: WlanHelper.exe <adapter> mode managed")
+                p_info("[i] Use Npcap WlanHelper to restore mode: WlanHelper.exe <adapter> mode managed")
             else:
-                print("[!] Not supported on this OS.")
+                p_warn("[!] Not supported on this OS.")
         
         input("\n[PRESS ENTER TO CONTINUE]")
     
     def deauth_operations(self):
-        print("\n[*] DEAUTH OPERATIONS MODULE")
-        print("=" * 50)
-        print("[!] WARNING: FOR AUTHORIZED TESTING ONLY")
+    p_title("\n[*] DEAUTH OPERATIONS MODULE")
+    print(color_text("=" * 50, Fore.CYAN))
+    p_warn("[!] WARNING: FOR AUTHORIZED TESTING ONLY")
         
         confirm = input("[+] CONFIRM AUTHORIZATION (YES/NO): ")
         if confirm.upper() != "YES":
-            print("[!] OPERATION CANCELLED")
+            p_warn("[!] OPERATION CANCELLED")
             return
         
         interface = input("[+] MONITOR INTERFACE: ")
@@ -643,15 +667,15 @@ class ShadowNet:
         if not client_mac:
             client_mac = "FF:FF:FF:FF:FF:FF"
         
-        print(f"[*] LAUNCHING DEAUTH ATTACK...")
+    p_info(f"[*] LAUNCHING DEAUTH ATTACK...")
         cmd = f"sudo aireplay-ng -0 {packets} -a {target_bssid} -c {client_mac} {interface}"
         subprocess.run(cmd, shell=True)
         
         input("\n[PRESS ENTER TO CONTINUE]")
     
     def wireless_bruteforce(self):
-        print("\n[*] WIRELESS BRUTEFORCE MODULE")
-        print("=" * 50)
+    p_title("\n[*] WIRELESS BRUTEFORCE MODULE")
+    print(color_text("=" * 50, Fore.CYAN))
         
         print("[1] USE DEFAULT WORDLIST")
         print("[2] SPECIFY CUSTOM WORDLIST")
@@ -665,19 +689,19 @@ class ShadowNet:
         elif choice == "2":
             wordlist = input("[+] WORDLIST FILE PATH: ")
             if not wordlist or not Path(wordlist).exists():
-                print("[!] WORDLIST FILE NOT FOUND")
+                p_error("[!] WORDLIST FILE NOT FOUND")
                 return
         else:
-            print("[!] INVALID SELECTION")
+            p_error("[!] INVALID SELECTION")
             return
         
         handshake_file = input("[+] HANDSHAKE FILE (.cap): ")
         if not handshake_file or not Path(handshake_file).exists():
-            print("[!] HANDSHAKE FILE NOT FOUND")
+            p_error("[!] HANDSHAKE FILE NOT FOUND")
             return
         
-        print(f"[*] USING WORDLIST: {wordlist}")
-        print(f"[*] STARTING BRUTEFORCE ATTACK...")
+    p_info(f"[*] USING WORDLIST: {wordlist}")
+    p_info(f"[*] STARTING BRUTEFORCE ATTACK...")
         
         cmd = f"aircrack-ng -w {wordlist} {handshake_file}"
         subprocess.run(cmd, shell=True)
@@ -685,28 +709,28 @@ class ShadowNet:
         input("\n[PRESS ENTER TO CONTINUE]")
     
     def handshake_capture(self):
-        print("\n[*] HANDSHAKE CAPTURE MODULE")
-        print("=" * 50)
+    p_title("\n[*] HANDSHAKE CAPTURE MODULE")
+    print(color_text("=" * 50, Fore.CYAN))
         
         interface = input("[+] MONITOR INTERFACE: ")
         target_bssid = input("[+] TARGET BSSID: ")
         channel = input("[+] TARGET CHANNEL: ")
         output_file = input("[+] OUTPUT FILE NAME: ") or "handshake"
         
-        print(f"[*] CAPTURING HANDSHAKE FROM {target_bssid}")
-        print("[*] CTRL+C TO STOP CAPTURE")
+    p_info(f"[*] CAPTURING HANDSHAKE FROM {target_bssid}")
+    p_warn("[*] CTRL+C TO STOP CAPTURE")
         
         cmd = f"sudo airodump-ng -c {channel} --bssid {target_bssid} -w {output_file} {interface}"
         try:
             subprocess.run(cmd, shell=True)
         except KeyboardInterrupt:
-            print("\n[*] CAPTURE STOPPED")
+            p_info("\n[*] CAPTURE STOPPED")
         
         input("\n[PRESS ENTER TO CONTINUE]")
     
     def dictionary_attack(self):
-        print("\n[*] DICTIONARY ATTACK MODULE")
-        print("=" * 50)
+    p_title("\n[*] DICTIONARY ATTACK MODULE")
+    print(color_text("=" * 50, Fore.CYAN))
         
         print("[1] USE DEFAULT WORDLIST")
         print("[2] SPECIFY CUSTOM WORDLIST")
@@ -721,30 +745,30 @@ class ShadowNet:
         elif choice == "2":
             wordlist = input("[+] WORDLIST FILE PATH: ")
             if not wordlist or not Path(wordlist).exists():
-                print("[!] WORDLIST FILE NOT FOUND")
+                p_error("[!] WORDLIST FILE NOT FOUND")
                 return
         elif choice == "3":
             self.generate_custom_wordlist()
             wordlist = self.wordlist_path
         else:
-            print("[!] INVALID SELECTION")
+            p_error("[!] INVALID SELECTION")
             return
         
         handshake_file = input("[+] HANDSHAKE FILE: ")
         if not Path(handshake_file).exists():
-            print("[!] HANDSHAKE FILE NOT FOUND")
+            p_error("[!] HANDSHAKE FILE NOT FOUND")
             return
         
-        print(f"[*] USING WORDLIST: {wordlist}")
-        print(f"[*] LAUNCHING DICTIONARY ATTACK...")
+    p_info(f"[*] USING WORDLIST: {wordlist}")
+    p_info(f"[*] LAUNCHING DICTIONARY ATTACK...")
         cmd = f"aircrack-ng -w {wordlist} {handshake_file}"
         subprocess.run(cmd, shell=True)
         
         input("\n[PRESS ENTER TO CONTINUE]")
     
     def generate_custom_wordlist(self):
-        print("\n[*] WORDLIST GENERATOR")
-        print("=" * 30)
+    p_title("\n[*] WORDLIST GENERATOR")
+    print(color_text("=" * 30, Fore.CYAN))
         
         base_words = input("[+] BASE WORDS (comma separated): ").split(',')
         min_length = int(input("[+] MIN LENGTH (8): ") or "8")
@@ -778,11 +802,11 @@ class ShadowNet:
             for password in set(filtered_wordlist):
                 f.write(password + '\n')
         
-        print(f"[+] GENERATED {len(set(filtered_wordlist))} PASSWORDS")
+    p_ok(f"[+] GENERATED {len(set(filtered_wordlist))} PASSWORDS")
     
     def wordlist_management(self):
-        print("\n[*] WORDLIST MANAGEMENT MODULE")
-        print("=" * 50)
+    p_title("\n[*] WORDLIST MANAGEMENT MODULE")
+    print(color_text("=" * 50, Fore.CYAN))
         print("[1] VIEW DEFAULT WORDLIST")
         print("[2] CREATE CUSTOM WORDLIST")
         print("[3] MERGE WORDLISTS")
@@ -808,16 +832,16 @@ class ShadowNet:
         wordlist_path = input("[+] WORDLIST PATH (ENTER FOR DEFAULT): ") or self.wordlist_path
         
         if not Path(wordlist_path).exists():
-            print("[!] WORDLIST NOT FOUND")
+            p_error("[!] WORDLIST NOT FOUND")
             return
         
         try:
             with open(wordlist_path, 'r') as f:
                 lines = f.readlines()
             
-            print(f"\n[*] WORDLIST: {wordlist_path}")
+            p_title(f"\n[*] WORDLIST: {wordlist_path}")
             print(f"[*] TOTAL PASSWORDS: {len(lines)}")
-            print("=" * 30)
+            print(color_text("=" * 30, Fore.CYAN))
             
             show_all = input("[+] SHOW ALL PASSWORDS? (y/N): ").lower() == 'y'
             
@@ -832,11 +856,11 @@ class ShadowNet:
                     print(f"... AND {len(lines) - 20} MORE")
                     
         except Exception as e:
-            print(f"[!] ERROR READING WORDLIST: {e}")
+            p_error(f"[!] ERROR READING WORDLIST: {e}")
     
     def create_custom_wordlist(self):
-        print("\n[*] CUSTOM WORDLIST CREATOR")
-        print("=" * 30)
+    p_title("\n[*] CUSTOM WORDLIST CREATOR")
+    print(color_text("=" * 30, Fore.CYAN))
         
         output_file = input("[+] OUTPUT FILENAME: ") or "custom_wordlist.txt"
         
@@ -904,8 +928,8 @@ class ShadowNet:
             print(f"[+] TOTAL PASSWORDS: {len(set(passwords))}")
     
     def merge_wordlists(self):
-        print("\n[*] WORDLIST MERGER")
-        print("=" * 20)
+    p_title("\n[*] WORDLIST MERGER")
+    print(color_text("=" * 20, Fore.CYAN))
         
         wordlists = []
         print("[*] ENTER WORDLIST PATHS (EMPTY LINE TO FINISH)")
@@ -917,10 +941,10 @@ class ShadowNet:
             if Path(path).exists():
                 wordlists.append(path)
             else:
-                print("[!] FILE NOT FOUND")
+                p_error("[!] FILE NOT FOUND")
         
         if len(wordlists) < 2:
-            print("[!] NEED AT LEAST 2 WORDLISTS")
+            p_error("[!] NEED AT LEAST 2 WORDLISTS")
             return
         
         output_file = input("[+] OUTPUT FILENAME: ") or "merged_wordlist.txt"
@@ -932,23 +956,23 @@ class ShadowNet:
                 with open(wordlist, 'r') as f:
                     passwords = [line.strip() for line in f.readlines()]
                     all_passwords.update(passwords)
-                print(f"[+] LOADED {len(passwords)} FROM {wordlist}")
+                p_ok(f"[+] LOADED {len(passwords)} FROM {wordlist}")
             except Exception as e:
-                print(f"[!] ERROR READING {wordlist}: {e}")
+                p_error(f"[!] ERROR READING {wordlist}: {e}")
         
         with open(output_file, 'w') as f:
             for password in sorted(all_passwords):
                 if password:
                     f.write(password + '\n')
         
-        print(f"[+] MERGED WORDLIST CREATED: {output_file}")
-        print(f"[+] TOTAL UNIQUE PASSWORDS: {len(all_passwords)}")
+    p_ok(f"[+] MERGED WORDLIST CREATED: {output_file}")
+    p_ok(f"[+] TOTAL UNIQUE PASSWORDS: {len(all_passwords)}")
     
     def wordlist_stats(self):
         wordlist_path = input("[+] WORDLIST PATH: ")
         
         if not Path(wordlist_path).exists():
-            print("[!] WORDLIST NOT FOUND")
+            p_error("[!] WORDLIST NOT FOUND")
             return
         
         try:
@@ -957,8 +981,8 @@ class ShadowNet:
             
             lengths = [len(p) for p in passwords if p]
             
-            print(f"\n[*] WORDLIST STATISTICS: {wordlist_path}")
-            print("=" * 40)
+            p_title(f"\n[*] WORDLIST STATISTICS: {wordlist_path}")
+            print(color_text("=" * 40, Fore.CYAN))
             print(f"TOTAL PASSWORDS: {len(passwords)}")
             print(f"UNIQUE PASSWORDS: {len(set(passwords))}")
             print(f"AVERAGE LENGTH: {sum(lengths)/len(lengths):.1f}")
@@ -969,16 +993,16 @@ class ShadowNet:
             for length in lengths:
                 length_dist[length] = length_dist.get(length, 0) + 1
             
-            print(f"\nLENGTH DISTRIBUTION:")
+            p_title(f"\nLENGTH DISTRIBUTION:")
             for length in sorted(length_dist.keys())[:10]:
                 print(f"  {length} chars: {length_dist[length]} passwords")
                 
         except Exception as e:
-            print(f"[!] ERROR ANALYZING WORDLIST: {e}")
+            p_error(f"[!] ERROR ANALYZING WORDLIST: {e}")
     
     def download_wordlists(self):
-        print("\n[*] WORDLIST DOWNLOADER")
-        print("=" * 25)
+    p_title("\n[*] WORDLIST DOWNLOADER")
+    print(color_text("=" * 25, Fore.CYAN))
         print("[1] ROCKYOU.TXT")
         print("[2] COMMON PASSWORDS")
         print("[3] WIFI PASSWORDS")
@@ -1001,17 +1025,17 @@ class ShadowNet:
         else:
             return
         
-        print(f"[*] DOWNLOADING {filename}...")
+    p_info(f"[*] DOWNLOADING {filename}...")
         try:
             import urllib.request
             urllib.request.urlretrieve(url, filename)
-            print(f"[+] DOWNLOADED: {filename}")
+            p_ok(f"[+] DOWNLOADED: {filename}")
         except Exception as e:
-            print(f"[!] DOWNLOAD FAILED: {e}")
+            p_error(f"[!] DOWNLOAD FAILED: {e}")
     
     def file_operations(self):
-        print("\n[*] FILE OPERATIONS MODULE")
-        print("=" * 50)
+    p_title("\n[*] FILE OPERATIONS MODULE")
+    print(color_text("=" * 50, Fore.CYAN))
         print("[1] LIST CAPTURE FILES")
         print("[2] ANALYZE HANDSHAKE")
         print("[3] FILE CONVERTER")
@@ -1031,13 +1055,13 @@ class ShadowNet:
         input("\n[PRESS ENTER TO CONTINUE]")
     
     def list_capture_files(self):
-        print("\n[*] CAPTURE FILES")
-        print("=" * 20)
+    p_title("\n[*] CAPTURE FILES")
+    print(color_text("=" * 20, Fore.CYAN))
         
         cap_files = list(Path(".").glob("*.cap")) + list(Path(".").glob("*.pcap"))
         
         if not cap_files:
-            print("[!] NO CAPTURE FILES FOUND")
+            p_warn("[!] NO CAPTURE FILES FOUND")
             return
         
         for i, file in enumerate(cap_files, 1):
@@ -1049,16 +1073,16 @@ class ShadowNet:
         handshake_file = input("[+] HANDSHAKE FILE: ")
         
         if not Path(handshake_file).exists():
-            print("[!] FILE NOT FOUND")
+            p_error("[!] FILE NOT FOUND")
             return
         
-        print(f"[*] ANALYZING {handshake_file}...")
+        p_info(f"[*] ANALYZING {handshake_file}...")
         cmd = f"aircrack-ng {handshake_file}"
         subprocess.run(cmd, shell=True)
     
     def file_converter(self):
-        print("\n[*] FILE CONVERTER")
-        print("=" * 20)
+    p_title("\n[*] FILE CONVERTER")
+    print(color_text("=" * 20, Fore.CYAN))
         print("[1] CAP TO HCCAPX")
         print("[2] PCAP TO CAP")
         
@@ -1072,7 +1096,7 @@ class ShadowNet:
                 cmd = f"cap2hccapx {input_file} {output_file}"
                 subprocess.run(cmd, shell=True)
             else:
-                print("[!] INPUT FILE NOT FOUND")
+                p_error("[!] INPUT FILE NOT FOUND")
         
         elif choice == "2":
             input_file = input("[+] INPUT PCAP FILE: ")
@@ -1082,10 +1106,10 @@ class ShadowNet:
                 cmd = f"editcap {input_file} {output_file}"
                 subprocess.run(cmd, shell=True)
             else:
-                print("[!] INPUT FILE NOT FOUND")
+                p_error("[!] INPUT FILE NOT FOUND")
     
     def clean_temp_files(self):
-        print("\n[*] CLEANING TEMPORARY FILES...")
+    p_title("\n[*] CLEANING TEMPORARY FILES...")
         
         temp_patterns = ["*.tmp", "*.temp", "*-01.cap", "*-01.csv", "*-01.kismet.csv"]
         cleaned = 0
@@ -1095,13 +1119,13 @@ class ShadowNet:
             for file in files:
                 file.unlink()
                 cleaned += 1
-                print(f"[+] DELETED: {file.name}")
+        p_ok(f"[+] DELETED: {file.name}")
         
-        print(f"[+] CLEANED {cleaned} TEMPORARY FILES")
+    p_ok(f"[+] CLEANED {cleaned} TEMPORARY FILES")
     
     def system_infiltration(self):
-        print("\n[*] SYSTEM INFILTRATION MODULE")
-        print("=" * 50)
+    p_title("\n[*] SYSTEM INFILTRATION MODULE")
+    print(color_text("=" * 50, Fore.CYAN))
         print("[1] PORT SCAN")
         print("[2] SERVICE ENUMERATION")
         print("[3] VULNERABILITY SCAN")
@@ -1121,7 +1145,7 @@ class ShadowNet:
         else:
             return
         
-        print(f"[*] EXECUTING: {cmd}")
+    p_info(f"[*] EXECUTING: {cmd}")
         subprocess.run(cmd, shell=True)
         
         input("\n[PRESS ENTER TO CONTINUE]")
